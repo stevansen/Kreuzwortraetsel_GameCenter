@@ -109,7 +109,7 @@ swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slo
 | M0 Repo, SPM, sechs Plattformen, CI-Skript | ✅ |
 | M1 `PuzzleKit`-Kern, Layout-Seam, Templatesuche, Seam-Scans | ✅ |
 | M2 Katalogpipeline, drei Quellen, Abdeckungsreport | ✅ |
-| M3 Füll-Engine, `classic`-Generator, CLI | ✅ |
+| M3 Füll-Engine, `classic`-Generator (alle vier Stufen), CLI | ✅ |
 | M4 `ArrowLayout` (Schwedenrätsel), alle vier Stufen | ✅ |
 | M5–M6 App, beide Varianten spielbar | offen |
 | M7 Game Center · M8 CloudKit + Handoff + Widgets | offen |
@@ -118,6 +118,16 @@ swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slo
 ## Bekannte Lücken
 
 Ehrlich statt hübsch. Alles hier ist gemessen, nicht vermutet.
+
+**Eine schwere Stufe soll seltene Wörter zulassen, nicht aus ihnen bestehen.**
+Die Kandidaten-Vorauswahl zielte auf `minZipf + 0,8` — bei classic/experte
+(minZipf 2,0) also auf zipf ≈ 2,8, und das sind rund 30.000 Wörter aus dem langen
+Wiktionary-Schwanz. Die verzahnen schlecht: ungewöhnliche Buchstabenmuster,
+wenige passende Kreuzungen. Die Pools waren mit 1.200 bis 11.500 Kandidaten je
+Slot die größten im ganzen Projekt, und trotzdem füllte nichts. Mit einem Boden
+bei zipf 3,6 (`FillEngine.preferredZipfFloor`) füllt dasselbe Gitter in 20
+Sekunden. Wer eine Stufe „schwerer" machen will, senkt `minZipf` — nicht das
+bevorzugte Niveau.
 
 **Der Katalog ist der Engpass, nicht die Suche.** 126.041 Antworten klingt viel,
 aber die Schwierigkeitsbänder schneiden schmale Scheiben heraus: bei zipf ≥ 4,5
@@ -146,6 +156,16 @@ zum Stehen — 500.000 Knoten ohne Ergebnis. Mit **Least-Constraining-Value**
 (nimm den Kandidaten, der den kreuzenden Slots am meisten Auswahl lässt) füllt
 dasselbe Rätsel in 7.500 Knoten. Wer hier weiter optimieren will, sollte bei der
 Wertreihenfolge anfangen, nicht bei den Budgets.
+
+**Die Generierung ist noch zu langsam für „on device".** Der Prompt setzt p95
+unter 1,5 s an; gemessen auf einem M-Mac im Release-Build: classic/leicht 0,00 s,
+classic/mittel 1,6 s, classic/experte 20 s, arrow/schwer 50 s, arrow/experte 93 s.
+Die schweren Stufen brauchen mehrere Anläufe, und jeder verwirft ein komplettes
+Layout. Zwei Ansatzpunkte, beide unangetastet: die LCV-Bewertung kopiert je
+Kandidat den Suchzustand (Kandidatenzahlen ließen sich inkrementell fortschreiben),
+und ein gescheiterter Anlauf wirft alles weg statt gezielt zurückzusetzen. Für
+den Vorrat vorgenerierter Rätsel im Hintergrund reicht es heute; als
+Sofort-Generierung auf dem Gerät nicht.
 
 **Templatevielfalt bei großen Gittern.** Die Suche findet für 15×15 nur eine
 Handvoll Muster (für 7×7 und 9×9 dutzende). Aufeinanderfolgende Experte-Rätsel

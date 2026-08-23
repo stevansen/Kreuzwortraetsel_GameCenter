@@ -172,7 +172,8 @@ func cmdGen(_ args: Args) {
     }
 
     let gen = Generator(layout: layout, index: ctx.index, clues: ctx.clues, widths: ctx.widths,
-                        branchLimit: args.int("branch", 80))
+                        branchLimit: args.int("branch", 80),
+                        lcvWidth: args.int("lcv", 18))
     let seed = args.uint64("seed", 1)
     let t0 = Date()
 

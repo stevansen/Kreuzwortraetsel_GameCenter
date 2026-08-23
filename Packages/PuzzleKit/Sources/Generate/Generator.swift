@@ -36,15 +36,18 @@ public struct Generator: Sendable {
     /// einem Fehlschlag auf einer erfüllbaren Instanz.
     public let branchLimit: Int
 
+    public let lcvWidth: Int
+
     public init(layout: any LayoutProvider, index: PatternIndex, clues: any ClueSource,
                 widths: GlyphWidthTable, generatorVersion: Int = 1,
-                branchLimit: Int = 80) {
+                branchLimit: Int = 80, lcvWidth: Int = 18) {
         self.layout = layout
         self.index = index
         self.clues = clues
         self.widths = widths
         self.generatorVersion = generatorVersion
         self.branchLimit = branchLimit
+        self.lcvWidth = lcvWidth
     }
 
     public struct Report: Sendable {
@@ -84,7 +87,8 @@ public struct Generator: Sendable {
 
                 let filters = slotFilters(topology: topology, profile: profile)
                 let engine = FillEngine(index: index, topology: topology, profile: profile,
-                                        slotFilters: filters, branchLimit: branchLimit)
+                                        slotFilters: filters, branchLimit: branchLimit,
+                                        lcvWidth: lcvWidth)
                 let box = FillEngine.TraceBox()
                 report.slotCount = topology.slots.count
                 defer {

@@ -39,6 +39,10 @@ public struct FillTrace: Sendable {
 /// Kreuzungen, gewichtete Kandidatenreihenfolge nach Nähe zum Zipf-Zielband.
 /// Alle Tiebreaks sind deterministisch.
 public struct FillEngine {
+    /// Untergrenze für das bevorzugte Häufigkeitsniveau der Kandidaten.
+    /// Rund „noch gebräuchlich" auf der Zipf-Skala.
+    public static let preferredZipfFloor = 3.6
+
     public let index: PatternIndex
     public let topology: Topology
     public let profile: DifficultyProfile
@@ -47,6 +51,11 @@ public struct FillEngine {
     public let slotFilters: [PatternIndex.WordFilter]
     public let branchLimit: Int
     /// Wie viele Kandidaten je Knoten nach Least-Constraining-Value bewertet werden.
+    ///
+    /// Zusammen mit `branchLimit` entscheidet dieser Wert, **welchen Ausschnitt**
+    /// eines Kandidatenpools die Suche überhaupt sieht. Bei classic/experte
+    /// stehen Pools von 6.000 bis 11.500 Wörtern zur Verfügung — davon 80
+    /// vorzusortieren und 18 zu bewerten ist ein sehr schmaler Blick.
     public let lcvWidth: Int
 
     private let crossings: [[(other: Int, mine: Int, theirs: Int)]]
@@ -182,11 +191,18 @@ public struct FillEngine {
     /// Kandidatenreihenfolge: erst Nähe zum Zipf-Zielband (drei Körbe), dann ein
     /// seedbarer Streuschlüssel. Bewusst ohne `pow`/`log` — `PuzzleKit` soll ohne
     /// Foundation bauen, und Ganzzahlarithmetik ist hier auch reproduzierbarer.
+    ///
+    /// Das Ziel liegt **nicht** direkt über `minZipf`, sondern hat einen Boden bei
+    /// `preferredZipfFloor`. Sonst bevorzugt eine schwere Stufe ausgerechnet den
+    /// seltensten Teil ihres Bandes — bei classic/experte (minZipf 2,0) waren das
+    /// rund 30.000 Wörter aus dem langen Wiktionary-Schwanz. Die verzahnen
+    /// schlecht: ungewöhnliche Buchstabenmuster, wenige passende Kreuzungen. Eine
+    /// schwere Stufe soll seltene Wörter *zulassen*, nicht aus ihnen *bestehen*.
     private func order(_ cands: Bitset, length: Int, salt: UInt64) -> [Int] {
         guard let idx = index.lengths[length] else { return [] }
         var keyed: [(UInt64, Int)] = []
         keyed.reserveCapacity(min(cands.count, 4096))
-        let target = profile.minZipf + 0.8
+        let target = max(profile.minZipf + 0.8, Self.preferredZipfFloor)
         cands.forEachSetBit { local in
             let d = abs(idx.zipf[local] - target)
             let bucket: UInt64 = d < 0.5 ? 0 : (d < 1.5 ? 1 : 2)
