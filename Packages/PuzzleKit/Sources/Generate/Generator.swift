@@ -86,9 +86,12 @@ public struct Generator: Sendable {
                 }
 
                 let filters = slotFilters(topology: topology, profile: profile)
+                // Letzter Versuch ohne Fortschritts-Sonde: einmal ehrlich bis
+                // ans Knotenbudget, statt zum zehnten Mal früh aufzugeben.
                 let engine = FillEngine(index: index, topology: topology, profile: profile,
                                         slotFilters: filters, branchLimit: branchLimit,
-                                        lcvWidth: lcvWidth)
+                                        lcvWidth: lcvWidth,
+                                        useProgressProbe: attempt < profile.maxAttempts - 1)
                 let box = FillEngine.TraceBox()
                 report.slotCount = topology.slots.count
                 defer {

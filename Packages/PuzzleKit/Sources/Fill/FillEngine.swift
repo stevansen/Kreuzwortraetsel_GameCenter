@@ -68,7 +68,8 @@ public struct FillEngine {
 
     public init(index: PatternIndex, topology: Topology, profile: DifficultyProfile,
                 slotFilters: [PatternIndex.WordFilter], branchLimit: Int = 80,
-                lcvWidth: Int = 18, nodeBudget: Int? = nil) {
+                lcvWidth: Int = 18, nodeBudget: Int? = nil,
+                useProgressProbe: Bool = true) {
         self.index = index
         self.topology = topology
         self.profile = profile
@@ -90,8 +91,21 @@ public struct FillEngine {
         // die Suche nach einer Sondierungsphase überhaupt einen nennenswerten Teil
         // des Gitters belegt? Ein Layout, das nach 30.000 Knoten nie über 45 % kam,
         // kommt auch nach 600.000 nicht.
+        // Der Boden lag zuerst bei 45 %. Nach der Fragen-Schärfung (26 % weniger
+        // Kurzfragen) brauchte die Suche für denselben Anteil mehr Knoten, und die
+        // Sonde tötete Versuche, die durchgekommen wären — arrow/mittel starb so
+        // nach 900 Knoten je Versuch. 30 % ist gemessen, nicht geschätzt.
         self.progressProbeNodes = min(max(nodeBudget ?? profile.nodeBudget, 1) / 20, 30_000)
-        self.progressFloor = max(1, Int(Double(topology.slots.count) * 0.45))
+        self.progressFloor = useProgressProbe
+            ? max(1, Int(Double(topology.slots.count) * 0.30))
+            : 0
+        //
+        // **Der letzte Versuch läuft ohne Sonde.** Die Sonde ist eine Wette:
+        // sie spart Zeit an hoffnungslosen Layouts und verliert gelegentlich ein
+        // lösbares. Bei classic/experte, Seed 2, starben alle zehn Versuche an
+        // der Sonde (30.328 Knoten von 2.500.000) — die Wette ging zehnmal
+        // hintereinander verloren. Ein Versuch ohne Abbruch kostet im Regelfall
+        // nichts, weil er nur erreicht wird, wenn alles andere gescheitert ist.
         //
         // Ein zusätzlicher Stillstandsdetektor („seit N Knoten kein neuer
         // Bestwert") war der zweite Anlauf und ein Rückschritt: beim Füllen der
@@ -294,7 +308,8 @@ public struct FillEngine {
         if state.filled == topology.slots.count { return true }
         if state.nodes > nodeBudget { return false }
         // Sondierung: kein nennenswerter Fortschritt -> Layout aufgeben.
-        if state.nodes >= progressProbeNodes, state.maxFilled < progressFloor { return false }
+        if progressFloor > 0, state.nodes >= progressProbeNodes,
+           state.maxFilled < progressFloor { return false }
 
         guard let pick = pickSlot(state, masks, maxProperNouns: maxProperNouns) else { return false }
         if pick.candidates.isEmpty {

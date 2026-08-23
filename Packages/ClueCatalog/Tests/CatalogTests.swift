@@ -394,3 +394,78 @@ struct RoundTripTests {
         #expect(a.entries.first?.surface == "BAUM")
     }
 }
+
+@Suite("Fragen-Trennschärfe")
+struct ClueSharpnessTests {
+    static func hasNoun(_ t: String) -> Bool {
+        t.split(separator: " ").dropFirst().contains { $0.first?.isUppercase == true }
+    }
+
+    private func normalizer(_ budget: Int = 9_500) throws -> ClueNormalizer {
+        ClueNormalizer(abbreviations: try loadAbbreviations(), widths: loadWidths(),
+                       singleBudget: budget)
+    }
+
+    @Test func shortTextRejectsNounlessPhrases() throws {
+        let n = try normalizer()
+        // Stand so im gerenderten Rätsel: ERDE — „Belebter und dritter".
+        // Eine mehrwortige Wortgruppe ohne Substantiv ist keine Frage.
+        // Die Wortgruppe „Belebter und dritter" darf nicht stehenbleiben.
+        // Ein einzelnes Fragment ist zugelassen (siehe Normalize.swift).
+        let s = n.shortText(
+            from: "Belebter und dritter, von der Sonne aus gezählter Planet in unserem Sonnensystem")
+        if let s, s.text.contains(" ") { #expect(Self.hasNoun(s.text)) }
+        #expect(s?.text != "Belebter und dritter")
+    }
+
+    @Test func shortTextKeepsSingleWordAdjectives() throws {
+        let n = try normalizer()
+        // Die Substantiv-Regel darf einwortige Fragen nicht mitreißen:
+        // „Echt" ist eine gute Frage zu WAHR.
+        let s = try #require(n.shortText(from: "Echt"))
+        #expect(s.text == "Echt")
+    }
+
+    @Test func longTextTrimsDanglingClause() throws {
+        let n = try normalizer()
+        // Stand so im gerenderten Rätsel: DOMAIN — „Ein Namensbereich, der
+        // dazu dient". Ein angefangener Nebensatz ist keine Frage.
+        let t = try n.longText(
+            from: "Ein Namensbereich, der dazu dient, Rechner im Internet zu gruppieren"
+        ).get()
+        #expect(!t.hasSuffix("dient"))
+        #expect(!t.hasSuffix("der"))
+        #expect(!t.hasSuffix(","))
+        #expect(t.hasPrefix("Ein Namensbereich"))
+    }
+
+    @Test func longTextStripsContextPrefix() throws {
+        let n = try normalizer()
+        // Stand so im gerenderten Rätsel: ASYL — „Rechtssprache; kein Plural:
+        // Schutz". Die Einordnung vor dem Doppelpunkt ist Metainformation.
+        let t = try n.longText(
+            from: "Rechtssprache; kein Plural: Schutz vor politischer Verfolgung").get()
+        #expect(t == "Schutz vor politischer Verfolgung")
+    }
+
+    @Test func shortTextDropsTrailingPrepositions() throws {
+        // Budget wie bei einer Einzelzelle im Schwedenrätsel — bei 9.500
+        // kürzt die Leiter bis auf ein Wort und die Präposition entfällt
+        // ohnehin.
+        let n = try normalizer(16_000)
+        // Stand so im gerenderten Rätsel: TAL — „Tiefergelegenes Gelände
+        // zwischen". Eine Präposition am Ende lässt die Frage offen.
+        let s = try #require(n.shortText(
+            from: "Tiefergelegenes Gelände zwischen Erhebungen, Geländeeinschnitt"))
+        #expect(!s.text.hasSuffix("zwischen"))
+        #expect(s.text == "Tiefergelegenes Gelände")
+    }
+
+    @Test func longTextKeepsRealColons() throws {
+        let n = try normalizer()
+        // Ein Doppelpunkt spät im Text ist Teil der Definition, kein Präfix.
+        let source = "Gerät zur Messung des Luftdrucks: es zeigt Wetteränderungen an"
+        let t = try n.longText(from: source).get()
+        #expect(t.hasPrefix("Gerät zur Messung"))
+    }
+}

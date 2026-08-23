@@ -270,20 +270,74 @@ bei zipf 3,6 (`FillEngine.preferredZipfFloor`) füllt dasselbe Gitter in 20
 Sekunden. Wer eine Stufe „schwerer" machen will, senkt `minZipf` — nicht das
 bevorzugte Niveau.
 
-**Der Katalog ist der Engpass, nicht die Suche.** 126.041 Antworten klingt viel,
+**Der Katalog ist der Engpass, nicht die Suche.** 128.584 Antworten klingt viel,
 aber die Schwierigkeitsbänder schneiden schmale Scheiben heraus: bei zipf ≥ 4,5
-(Stufe „Leicht") bleiben 1.251 Antworten der Länge 3–10. Voll verzahnte Gitter
+(Stufe „Leicht") bleiben 1.258 Antworten der Länge 3–10. Voll verzahnte Gitter
 brauchen Wortlisten in der Größenordnung 50.000 pro Band — deshalb sind die
 Gitter hier bewusst nicht voll verzahnt (siehe `DifficultyProfile`). Der
 nächstgrößte Hebel ist mehr Vokabular, nicht mehr Suchheuristik.
 
-**Kurzfragen sind manchmal zu vage.** Sie entstehen durch Kürzen der Langform,
-und das kann die Trennschärfe kosten: „EIS — Wasser" ist formal eindeutig (kein
-anderer Dreibuchstaber im Katalog hat genau diese Kurzform), als Frage aber
-schwach. Das Ambiguitätsgatter greift erst bei drei Antworten gleicher Länge mit
-identischem Text; für Kurzfragen wäre eine Schwelle von zwei richtiger. Ebenso
-fehlt eine Wortart-Prüfung: ein Adjektiv wie AUFFÄLLIG bekommt gelegentlich eine
-Substantiv-Kurzfrage („Aufmerksamkeit").
+**Fragen-Trennschärfe: geschärft, und sie hat einen Preis.** „EIS — Wasser" war
+formal eindeutig (kein anderer Dreibuchstaber trug genau diese Kurzform), als
+Frage aber wertlos. Drei Gatter greifen jetzt zusätzlich: Schwelle 2 statt 3 bei
+gleicher Länge, ein katalogweiter Deckel von 4 Vorkommen, und eine Wortart-Prüfung
+(ein Adjektiv bekommt keine Substantiv-Kurzfrage mehr). Danach fielen beim
+Rendern vier weitere Fehler auf, die vorher im Rauschen lagen und ebenfalls
+behoben sind:
+
+| Fehler im Rätsel | Ursache | Regel |
+|---|---|---|
+| `ASYL — Rechtssprache; kein Plural: Schutz` | Wiktionary-Kontextangabe im Bedeutungstext | Präfix vor dem Doppelpunkt entfernen, wenn es kein Präpositionalwort enthält |
+| `DOMAIN — Ein Namensbereich, der dazu dient` | Langform an einer Klausengrenze gekappt | angefangenen Nebensatz abschneiden, Rest zu kurz → verwerfen |
+| `ERDE — Belebter und dritter` | aggressiver Schnitt vor dem Substantiv | mehrwortige Kurzform ohne Substantiv verwerfen |
+| `TAL — Tiefergelegenes Gelände zwischen` | 20 Präpositionen fehlten in der Dangler-Liste | nachgetragen; kostet keinen Pool, weil nur das letzte Wort entfällt |
+
+Der Preis: 25 % weniger Kurzfragen (131.131 → 98.039). Langfragen **gewannen**
+dabei (160.396 → 164.467 Clues), weil der Kontext-Strip und der Nebensatz-Schnitt
+Texte retten, die vorher als zu lang verworfen wurden.
+
+Restfehler mit Absicht: ein **einzelnes** Wort als Fragment bleibt möglich
+(`ERDE — Belebter`). Ob ein großgeschriebenes Einzelwort Substantiv
+(„Pflanzenart") oder Adjektivfragment („Belebter") ist, entscheidet die Endung —
+und jede Endungsregel trifft daneben: `-er` fängt „Lehrer" und „Zucker",
+`-e` fängt „Sonne" und „Rose". Drei bestehende Tests fielen bei dem Versuch, und
+zwar zu Recht. Das kurze Fragment ist harmloser als die Wortgruppe, aus der es
+kam; wer es lösen will, braucht eine echte Wortartenerkennung, keine Heuristik.
+
+**Die Schärfung kostete Füllbarkeit — und deckte dieselbe Doppelschranke zum
+dritten und vierten Mal auf.** Mit 26 % weniger Kurzfragen scheiterte
+classic/schwer auf 5 von 6 Seeds und arrow/mittel auf Seed 1. Beide Male band
+nicht `minZipf`, sondern der Tier-Deckel: Tier 5 enthält 129.075 der 164.467
+Clues, classic/schwer sah mit `clueTiers: 1...4` also ein Fünftel des Katalogs —
+bei Länge 3, dem knappsten Fach, 370 statt 615 Wörtern. Merkregel, jetzt viermal
+bestätigt: **`minZipf` regelt das Vokabular, `clueTiers` die Fragenhärte, und sie
+dürfen sich nicht überdecken.** Wer eine Kombination anfasst, prüft zuerst mit
+SQL, welcher der beiden Werte den Pool wirklich bindet — die Fehlermeldung sagt
+es nicht.
+
+**Zuverlässigkeit je Seed: 20 von 24 gemessen.** 8 Kombinationen × 3 Seeds nach
+der Fragen-Schärfung. Jede Kombination gelingt auf der Mehrheit ihrer Seeds,
+keine ist systematisch kaputt — aber vier Tripel scheitern: arrow/experte s1,
+classic/experte s2, arrow/schwer s2, arrow/leicht s3. Für Tagesrätsel ist der
+Seed das Datum, das wären also grob jeder sechste Tag ohne Rätsel. Das ist ein
+offener Produktfehler, kein gelöster.
+
+Zwei Gegenmaßnahmen sind gemessen und verworfen:
+
+* **Sonde lockern** half nur halb. Der Boden von 45 % auf 30 % rettete
+  arrow/mittel, aber classic/experte s2 starb weiter an der Sonde — alle zehn
+  Versuche, nach 30.328 von 2.500.000 Knoten. Der **letzte** Versuch läuft jetzt
+  ohne Sonde (einmal ehrlich bis ans Budget); er kostet nichts, weil er nur
+  erreicht wird, wenn alles andere gescheitert ist. arrow/leicht s3 scheitert
+  auch damit, nach vollen 300.000 Knoten in 28 Sekunden.
+* **Länge 3 für arrow/leicht zulassen** wurde verworfen, weil gemessen: 59
+  Dreibuchstaber unter dem Doppelzellen-Budget. Ein Dreibuchstaber-Slot ist der
+  am stärksten gekreuzte im Gitter; ein 59-Wort-Fach bremst mehr, als die extra
+  Länge einbringt. Die Grenze 4…7 im Profil ist damit bestätigt, nicht geraten.
+
+Der Engpass ist derselbe wie überall in diesem Abschnitt: der Kurzfragen-Pool.
+arrow/leicht wählt aus 151 bis 217 Wörtern je Länge. Wer die Zuverlässigkeit auf
+100 % bringen will, braucht mehr Kurzfragen — nicht mehr Suchheuristik.
 
 **Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf
 9×11 scheitert oft; der Generator kommt durch, weil er bis `maxAttempts` mal mit

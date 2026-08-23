@@ -20,6 +20,10 @@ public struct CatalogAnswer: Sendable {
     public var zipf: Double
     public var flags: AnswerFlags
     public var topics: [String]
+    /// Wortart aus dem Wiktionary (`noun`, `verb`, `adjective`, …), leer wenn
+    /// unbekannt. Wird gebraucht, um Frage und Antwort grammatisch zu paaren:
+    /// ein Adjektiv mit einer Substantiv-Kurzfrage ist eine schlechte Frage.
+    public var wordClass: String = ""
     public var sourceRef: String
     public var length: Int { Alphabet.normalize(surface)?.count ?? surface.count }
 }
@@ -40,7 +44,9 @@ public struct CatalogClue: Sendable {
 public enum CatalogSchema {
     /// Bei jeder Änderung erhöhen: die Version geht in die `PuzzleID` ein, weil
     /// ein anderer Katalog aus demselben Seed ein anderes Rätsel erzeugt.
-    public static let version = 1
+    ///
+    /// 2: Wortart je Antwort, plus geschärfte Kurzclue-Gatter.
+    public static let version = 2
 
     public static let ddl = """
     CREATE TABLE IF NOT EXISTS meta (
@@ -52,6 +58,7 @@ public enum CatalogSchema {
         length     INTEGER NOT NULL,
         zipf       REAL    NOT NULL,
         flags      INTEGER NOT NULL,
+        word_class TEXT    NOT NULL DEFAULT '',
         source_ref TEXT    NOT NULL);
 
     CREATE TABLE IF NOT EXISTS clues (
@@ -104,8 +111,8 @@ public final class CatalogWriter {
         throws -> (answers: Int, clues: Int, topics: Int)
     {
         let insA = try db.prepare("""
-            INSERT INTO answers (surface, length, zipf, flags, source_ref)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO answers (surface, length, zipf, flags, word_class, source_ref)
+            VALUES (?, ?, ?, ?, ?, ?)
             """)
         let insC = try db.prepare("""
             INSERT INTO clues (answer_id, text, short_text, short_width, kind, tier, locale,
@@ -118,7 +125,8 @@ public final class CatalogWriter {
         try db.transaction {
             for a in answers.sorted(by: { $0.surface < $1.surface }) {
                 try insA.run([.text(a.surface), .int(a.length), .double(a.zipf),
-                              .int(Int(a.flags.rawValue)), .text(a.sourceRef)])
+                              .int(Int(a.flags.rawValue)), .text(a.wordClass),
+                              .text(a.sourceRef)])
                 let aid = db.lastInsertRowID
                 nA += 1
                 for t in a.topics.sorted() {

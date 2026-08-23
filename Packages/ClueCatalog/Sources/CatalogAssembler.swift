@@ -17,6 +17,10 @@ public struct ImportReport: Sendable {
     public var zipfFromPageviews = 0
     public var shortInSingleBudget: [Int: Int] = [:]
     public var shortInDoubleBudget: [Int: Int] = [:]
+    /// Kurzformen, die an einem der geschärften Gatter gescheitert sind.
+    public var shortDroppedAmbiguous = 0
+    public var shortDroppedGeneric = 0
+    public var shortDroppedWordClass = 0
 
     mutating func reject(_ r: Rejection) { rejections[r, default: 0] += 1 }
 }
@@ -124,22 +128,30 @@ public struct CatalogAssembler: Sendable {
             }
             guard produced > 0 else { continue }
 
+            // Wortart: Substantiv gewinnt, wenn mehrere angegeben sind — ein
+            // Lemma mit Substantiv- *und* Nachnamen-Abschnitt ist als Gattungswort
+            // brauchbarer.
+            let wordClass = entry.wordClasses.contains("noun") ? "noun"
+                : (entry.wordClasses.sorted().first ?? "")
+
             if let existing = answers[surface] {
                 report.mergedAcrossSources += 1
                 answers[surface] = CatalogAnswer(
                     surface: surface, zipf: max(existing.zipf, zipf),
                     flags: existing.flags.union(flags),
                     topics: Array(Set(existing.topics).union(entry.topics)).sorted(),
+                    wordClass: existing.wordClass.isEmpty ? wordClass : existing.wordClass,
                     sourceRef: existing.sourceRef)
             } else {
                 answers[surface] = CatalogAnswer(surface: surface, zipf: zipf, flags: flags,
                                                  topics: entry.topics.sorted(),
+                                                 wordClass: wordClass,
                                                  sourceRef: entry.sourceRef)
             }
             _ = length
         }
 
-        applyAmbiguityGate(&clues, report: &report)
+        applyAmbiguityGate(&clues, answers: answers, report: &report)
 
         let finalAnswers = answers.values
             .filter { !(clues[$0.surface] ?? []).isEmpty }
@@ -168,37 +180,91 @@ public struct CatalogAssembler: Sendable {
     /// keine Frage, sondern ein Ratespiel. Läuft auf Lang- und Kurzform getrennt,
     /// weil Kürzen Mehrdeutigkeit erzeugt — genau der Fehler, der Schwedenrätsel
     /// unspielbar macht.
+    /// Wie oft eine Kurzform katalogweit vorkommen darf, bevor sie als
+    /// **generisch** gilt.
+    ///
+    /// „Wasser" als Frage zu EIS ist formal eindeutig — kein anderer
+    /// Dreibuchstaber hat genau diese Kurzform — und als Frage trotzdem schwach.
+    /// Das Merkmal ist nicht die Kollision bei gleicher Länge, sondern dass der
+    /// Text überhaupt für viele Antworten passt. Deshalb wird über **alle**
+    /// Längen gezählt.
+    static let genericShortClueLimit = 4
+
+    /// Wortarten, bei denen eine Substantiv-Kurzfrage grammatisch nicht passt.
+    ///
+    /// Im Deutschen ist ein einzelnes großgeschriebenes Wort ein Substantiv —
+    /// das ist hier ein verlässliches Merkmal, kein Ratespiel. „Aufmerksamkeit"
+    /// als Frage zu AUFFÄLLIG paart ein Substantiv mit einem Adjektiv.
+    static let nonNounClasses: Set<String> = ["adjective", "verb", "adverb"]
+
+    private static func looksLikeSingleNoun(_ text: String) -> Bool {
+        let words = text.split(separator: " ")
+        guard words.count == 1, let first = words[0].first else { return false }
+        return first.isUppercase
+    }
+
     private func applyAmbiguityGate(_ clues: inout [String: [CatalogClue]],
+                                    answers: [String: CatalogAnswer],
                                     report: inout ImportReport) {
         func length(_ surface: String) -> Int {
             Alphabet.normalize(surface)?.count ?? surface.count
         }
         var longIndex: [String: Set<String>] = [:]
         var shortIndex: [String: Set<String>] = [:]
+        /// Ohne Längenschlüssel: zählt, für wie viele Antworten eine Kurzform
+        /// überhaupt taugt.
+        var shortGlobal: [String: Set<String>] = [:]
+
         for (surface, cs) in clues {
             let len = length(surface)
             for c in cs {
                 longIndex["\(len)|\(c.text.lowercased())", default: []].insert(surface)
                 if let s = c.shortText {
-                    shortIndex["\(len)|\(s.lowercased())", default: []].insert(surface)
+                    let key = s.lowercased()
+                    shortIndex["\(len)|\(key)", default: []].insert(surface)
+                    shortGlobal[key, default: []].insert(surface)
                 }
             }
         }
+
         for (surface, cs) in clues {
             let len = length(surface)
+            let wordClass = answers[surface]?.wordClass ?? ""
             var kept: [CatalogClue] = []
             for var c in cs {
+                // Langform: unverändert bei drei Kollisionen gleicher Länge.
                 if (longIndex["\(len)|\(c.text.lowercased())"]?.count ?? 0) >= 3 {
                     report.ambiguousDropped += 1
                     continue
                 }
-                if let s = c.shortText,
-                   (shortIndex["\(len)|\(s.lowercased())"]?.count ?? 0) >= 3 {
-                    // Nur die Kurzform verwerfen — die Langform bleibt brauchbar,
-                    // das Wort steht dann nur für `classic` zur Verfügung.
-                    c.shortText = nil
-                    c.shortWidth = nil
-                    report.ambiguousDropped += 1
+
+                if let short = c.shortText {
+                    let key = short.lowercased()
+                    var drop = false
+
+                    // Kurzformen strenger: **zwei** reichen. Eine Kurzfrage, die
+                    // auf zwei Antworten gleicher Länge passt, ist im Gitter
+                    // nicht mehr entscheidbar — bei der Langform bleibt wenigstens
+                    // der Rest des Satzes zur Unterscheidung.
+                    if (shortIndex["\(len)|\(key)"]?.count ?? 0) >= 2 {
+                        report.shortDroppedAmbiguous += 1
+                        drop = true
+                    } else if (shortGlobal[key]?.count ?? 0) >= Self.genericShortClueLimit {
+                        report.shortDroppedGeneric += 1
+                        drop = true
+                    } else if Self.nonNounClasses.contains(wordClass),
+                              Self.looksLikeSingleNoun(short) {
+                        report.shortDroppedWordClass += 1
+                        drop = true
+                    }
+
+                    if drop {
+                        // Nur die Kurzform fällt weg — die Langform bleibt
+                        // brauchbar, das Wort steht dann für `classic` zur Verfügung.
+                        c.shortText = nil
+                        c.shortWidth = nil
+                        report.ambiguousDropped += 1
+                    }
                 }
                 kept.append(c)
             }

@@ -26,6 +26,14 @@ public struct HintPolicy: OptionSet, Sendable, Codable {
 /// damit ausgerechnet die häufigsten Wörter aus. Ein mittelschweres Rätsel darf
 /// selbstverständlich einfache Fragen enthalten.
 ///
+/// **arrow/leicht: `clueTiers` bis 3.** Dieselbe versteckte Doppelschranke wie
+/// unten bei arrow/schwer, nur an anderer Stelle: Tier 1–2 bedeutet bereits
+/// zipf >= 4,0 und liegt damit *über* den deklarierten 3,9 — `minZipf` war dort
+/// wirkungslos. Gemessen fiel es auf, als geschärfte Kurzclue-Gatter den Pool um
+/// 15 % verkleinerten und `minZipf` zu senken **nichts** änderte. Mit Tier bis 3
+/// regelt wieder `minZipf` das Vokabular und `clueTiers` die Fragenhärte, ohne
+/// sich zu überdecken.
+///
 /// **arrow/schwer: `clueTiers` bis 5, dafür `minZipf` zurück auf 2,8.** Hier
 /// steckte eine versteckte Doppelschranke: Tier 5 beginnt bei zipf < 2,6, und
 /// Eigennamen wie Abkürzungen werden zusätzlich um ein Tier hochgesetzt. Mit
@@ -34,6 +42,22 @@ public struct HintPolicy: OptionSet, Sendable, Codable {
 /// Unterscheidung zu Experte trägt jetzt `minZipf` allein (2,8 gegen 2,0), was
 /// auch der ehrlichere Regler ist.
 ///
+///
+/// **Dieselbe Doppelschranke, drittes und viertes Mal: classic/schwer auf 1...5,
+/// arrow/mittel auf 1...4.** Nach der Fragen-Schärfung im Katalog (26 % weniger
+/// Kurzformen) scheiterte classic/schwer auf 5 von 6 Seeds und arrow/mittel auf
+/// Seed 1. Beide Male band nicht `minZipf`, sondern der Tier-Deckel: Tier 5
+/// enthält 129.075 der 164.467 Clues, classic/schwer sah mit `1...4` also ein
+/// Fünftel des Katalogs — bei Länge 3, dem knappsten Fach, 370 statt 615
+/// Wörtern. Für arrow/mittel bringt Tier 4 bei Länge 3 ganze 31 % zurück
+/// (81 → 106 Kurzfragen unter dem Doppelzellen-Budget), Tier 5 danach fast
+/// nichts mehr — deshalb 4 und nicht 5: „Mittel" bleibt von der härtesten
+/// Fragenstufe verschont.
+///
+/// Die Regel, die sich damit viermal bestätigt hat: **`minZipf` regelt das
+/// Vokabular, `clueTiers` die Fragenhärte, und sie dürfen sich nicht
+/// überdecken.** Wer eine Kombination anfasst, prüft zuerst mit SQL, welcher
+/// der beiden Werte den Pool wirklich bindet.
 /// **arrow/schwer, erste Fassung: zipf >= 2,4.** Der sprechende Vergleich: arrow/experte
 /// ist größer (13×17 gegen 13×15) und dichter — und füllt trotzdem, weil sein
 /// Band bei 2,0 anfängt. Schwer blieb mit 2,8 konstant bei 15 von 43 Slots
@@ -138,7 +162,7 @@ public struct DifficultyProfile: Sendable {
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(square: 13)],
                   deadCellRatio: 0.15 ... 0.20, maxDoubleArrowRatio: 0, maxBentArrowRatio: 0,
-                  wordLength: 3 ... 9, minZipf: 2.8, clueTiers: 1 ... 4,
+                  wordLength: 3 ... 9, minZipf: 2.8, clueTiers: 1 ... 5,
                   maxProperNounRatio: 0.15, crossRatio: 0.50 ... 0.66,
                   singleClueBudget: 0, doubleClueBudget: 0,
                   parSeconds: 1500, referenceLetterCells: 141,
@@ -159,7 +183,7 @@ public struct DifficultyProfile: Sendable {
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 11, cols: 9)],
                   deadCellRatio: 0.24 ... 0.36, maxDoubleArrowRatio: 0.18, maxBentArrowRatio: 0.10,
-                  wordLength: 4 ... 7, minZipf: 3.9, clueTiers: 1 ... 2,
+                  wordLength: 4 ... 7, minZipf: 3.9, clueTiers: 1 ... 3,
                   maxProperNounRatio: 0.05, crossRatio: 0.34 ... 0.50,
                   singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 420, referenceLetterCells: 75, hints: .all,
@@ -168,7 +192,7 @@ public struct DifficultyProfile: Sendable {
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 13, cols: 11)],
                   deadCellRatio: 0.22 ... 0.32, maxDoubleArrowRatio: 0.28, maxBentArrowRatio: 0.16,
-                  wordLength: 3 ... 9, minZipf: 3.4, clueTiers: 1 ... 3,
+                  wordLength: 3 ... 9, minZipf: 3.4, clueTiers: 1 ... 4,
                   maxProperNounRatio: 0.10, crossRatio: 0.40 ... 0.54,
                   singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 900, referenceLetterCells: 111, hints: .all,

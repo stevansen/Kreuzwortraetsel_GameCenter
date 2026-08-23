@@ -189,10 +189,41 @@ public struct ClueNormalizer: Sendable {
         return collapse(out)
     }
 
+    /// Wörter, die eine echte Definition verraten: Präpositionen und Artikel.
+    /// Eine Wiktionary-Kontextangabe ist eine nackte Bezeichnung
+    /// („Rechtssprache", „kein Plural") und enthält keines davon.
+    static let definitionMarkers: Set<String> = [
+        "zur", "zum", "des", "der", "die", "das", "den", "dem", "von", "vom",
+        "für", "mit", "aus", "im", "in", "an", "auf", "bei", "nach", "über",
+        "unter", "um", "zu", "ein", "eine", "einer", "eines", "einem", "einen",
+    ]
+
+    /// Vorangestellte Kontextangaben aus Wiktionary-Bedeutungen.
+    ///
+    /// Manche Bedeutungen beginnen mit einer Einordnung und einem Doppelpunkt:
+    /// „Rechtssprache; kein Plural: Schutz vor Verfolgung". Der Teil vor dem
+    /// Doppelpunkt ist Metainformation, keine Frage — im Rätsel stand
+    /// „Rechtssprache; kein Plural: Schutz". Nur ein **kurzes** Präfix wird
+    /// entfernt, damit kein echter Doppelpunkt mitten in einer Definition
+    /// abgeschnitten wird.
+    static func strippingContextPrefix(_ text: String) -> String {
+        guard let colon = text.firstIndex(of: ":") else { return text }
+        let prefix = text[text.startIndex ..< colon]
+        // Reine Länge genügt nicht: „Gerät zur Messung des Luftdrucks:" ist
+        // 32 Zeichen kurz und trotzdem die Definition selbst.
+        guard prefix.count <= 40 else { return text }
+        let words = prefix.split(whereSeparator: { " ,;".contains($0) })
+            .map { $0.lowercased() }
+        guard !words.contains(where: { definitionMarkers.contains($0) }) else { return text }
+        let rest = collapse(String(text[text.index(after: colon)...]))
+        return rest.count >= 8 ? rest : text
+    }
+
     /// Langform: aufräumen, nicht umschreiben. Was zu lang ist, wird an einer
     /// Klausengrenze gekappt — und wenn das nicht reicht, verworfen.
     public func longText(from description: String) -> Result<String, Rejection> {
-        var t = Self.collapse(description.replacingOccurrences(of: "\n", with: " "))
+        var t = Self.collapse(
+            Self.strippingContextPrefix(description.replacingOccurrences(of: "\n", with: " ")))
         while t.hasSuffix(".") || t.hasSuffix(";") { t.removeLast() }
         t = Self.collapse(t)
         guard t.count >= 8 else { return .failure(.clueTooShort) }
@@ -209,7 +240,40 @@ public struct ClueNormalizer: Sendable {
             }
             guard t.count >= 8 else { return .failure(.clueTooShort) }
         }
+        // Nach dem Kappen kann ein angefangener Nebensatz stehenbleiben: „Ein
+        // Namensbereich, der dazu dient" stand so im Rätsel. Solche Enden werden
+        // abgeschnitten, und was danach zu kurz ist, wird verworfen.
+        t = Self.trimmingDanglingClause(t)
+        guard t.count >= 8 else { return .failure(.clueTooShort) }
         return .success(t.prefix(1).uppercased() + t.dropFirst())
+    }
+
+    /// Wörter, die eine Langform nicht beenden dürfen — Relativpronomen,
+    /// Bindewörter, Hilfsverben.
+    ///
+    /// `dient` ist ein Vollverb und fällt hier auf: es stammt aus dem
+    /// beobachteten Fall „Ein Namensbereich, der dazu dient" und trägt ihn, weil
+    /// das Abwickeln vom Satzende her beginnt. Sauber wäre eine Erkennung
+    /// finiter Verben; solange die fehlt, steht hier der Einzelfall — sichtbar
+    /// statt versteckt.
+    static let clauseOpeners: Set<String> = [
+        "der", "die", "das", "dem", "den", "dessen", "deren", "welcher", "welche",
+        "welches", "wo", "womit", "worin", "wobei", "wodurch", "wozu",
+        "und", "oder", "sowie", "aber", "dass", "weil", "damit", "obwohl",
+        "dazu", "dient", "ist", "sind", "war", "waren", "wird", "werden",
+        "hat", "haben", "kann", "können", "soll", "sollen",
+    ]
+
+    static func trimmingDanglingClause(_ text: String) -> String {
+        var words = text.split(separator: " ").map(String.init)
+        while let last = words.last, clauseOpeners.contains(last.lowercased())
+            || last.hasSuffix(",") || last == "-" {
+            words.removeLast()
+        }
+        // Ein zurückgebliebenes Komma am Ende ebenfalls entfernen.
+        var result = collapse(words.joined(separator: " "))
+        while result.hasSuffix(",") || result.hasSuffix(";") { result.removeLast() }
+        return collapse(result)
     }
 
     public struct Short: Sendable {
@@ -248,6 +312,12 @@ public struct ClueNormalizer: Sendable {
             "ein", "eine", "einer", "eines", "einem", "einen",
             "in", "im", "aus", "von", "vom", "mit", "zu", "zur", "zum", "für", "bei",
             "auf", "am", "an", "als", "über", "unter", "durch", "nach", "vor", "um",
+            // Nachgetragen aus einem gerenderten Rätsel: „TAL — Tiefergelegenes
+            // Gelände zwischen". Diese Regel kostet keinen Pool, weil nur das
+            // letzte Wort wegfällt und die Frage danach steht.
+            "zwischen", "gegen", "ohne", "seit", "während", "wegen", "trotz",
+            "innerhalb", "außerhalb", "entlang", "gegenüber", "neben", "hinter",
+            "samt", "statt", "bis", "ab", "je", "pro", "laut", "mittels",
             "ist", "sind", "war", "u.a.", "z.B.", "ca.",
         ]).union(
             // Datengetrieben: Abkürzungen, die aus **Adjektiven** entstanden
@@ -274,6 +344,24 @@ public struct ClueNormalizer: Sendable {
             let candidate = trimDanglers(Self.collapse(raw))
             guard !candidate.isEmpty else { return nil }
             let text = candidate.prefix(1).uppercased() + candidate.dropFirst()
+            // Eine **mehrwortige** Kurzform ohne Substantiv ist eine angefangene
+            // Wortgruppe: ERDE hatte „Belebter und dritter" (aus „Belebter und
+            // dritter, von der Sonne aus gezählter Planet …"). Im Deutschen ist
+            // jedes großgeschriebene Wort ein Substantiv; das erste zählt nicht,
+            // weil dort auch ein Adjektiv groß wäre.
+            //
+            // Bewusst nur mehrwortig. Ob ein einzelnes großgeschriebenes Wort
+            // Substantiv („Pflanzenart") oder Adjektivfragment („Belebter") ist,
+            // entscheidet die Endung — und jede Endungsregel greift daneben:
+            // -er trifft „Lehrer" und „Zucker", -e trifft „Sonne" und „Rose".
+            // Ein einzelnes Fragment bleibt deshalb möglich; es ist kurz und
+            // harmloser als die Wortgruppe, aus der es kam. Siehe README,
+            // Abschnitt „Bekannte Lücken".
+            let words = text.split(separator: " ").map(String.init)
+            if words.count > 1,
+               !words.dropFirst().contains(where: { $0.first?.isUppercase == true }) {
+                return nil
+            }
             guard text.count >= 4 else { return nil }
             let w = widths.width(of: text)
             guard w <= singleBudget else { return nil }
