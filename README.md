@@ -296,13 +296,62 @@ Der Preis: 25 % weniger Kurzfragen (131.131 → 98.039). Langfragen **gewannen**
 dabei (160.396 → 164.467 Clues), weil der Kontext-Strip und der Nebensatz-Schnitt
 Texte retten, die vorher als zu lang verworfen wurden.
 
-Restfehler mit Absicht: ein **einzelnes** Wort als Fragment bleibt möglich
-(`ERDE — Belebter`). Ob ein großgeschriebenes Einzelwort Substantiv
-(„Pflanzenart") oder Adjektivfragment („Belebter") ist, entscheidet die Endung —
-und jede Endungsregel trifft daneben: `-er` fängt „Lehrer" und „Zucker",
-`-e` fängt „Sonne" und „Rose". Drei bestehende Tests fielen bei dem Versuch, und
-zwar zu Recht. Das kurze Fragment ist harmloser als die Wortgruppe, aus der es
-kam; wer es lösen will, braucht eine echte Wortartenerkennung, keine Heuristik.
+Das einwortige Adjektivfragment liess sich am Ende doch lösen, und der Umweg
+lohnt als Notiz. Der erste Versuch fragte nach der **Endung** und riss drei
+bestehende Tests mit: `-er` fängt „Lehrer" und „Zucker", `-e` fängt „Sonne" und
+„Rose". Die Bedingung, die den Unterschied macht, ist nicht die Endung allein,
+sondern **ob geschnitten wurde**: „Flaches" entsteht aus „Flaches Gebäck aus
+Mürbeteig", „Zucker" steht so in der Quelle. Mit dieser Zusatzbedingung kostet die
+Regel 892 Kurzfragen (0,75 %) statt der halben Ernte. Bezahlbar wurde sie erst
+durch den grösseren Pool — vorher hätte dieselbe Regel Kombinationen gekippt.
+
+Die Endung `-e` bleibt bewusst ausgenommen, weil dort die Substantive überwiegen
+(„Sonne", „Rose", „Sprache"). Einwortige Fragmente auf `-e` überleben deshalb
+weiter: „Feine" aus „Feine Zucker- und Backwaren aus Weizenmehl" ist der Rest,
+der bleibt.
+
+**Der Kurzfragen-Pool: vergeben statt verwerfen.** Nach der Schärfung fehlten
+66.428 Kurzformen — davon fielen 61.990 (93 %) im Ambiguitätsgatter und nur ~4.400
+schon bei der Ableitung. Das Gatter war die Ursache, nicht die Textqualität. Zwei
+Änderungen:
+
+1. **Kandidatenlisten statt einer Kurzform.** Rang 0 bleibt die erste Klausel;
+   danach kommen die späteren Klauseln, weil das im Wiktionary oft Synonyme sind
+   und damit spezifischer als eine gekappte erste Klausel: „Tiefergelegenes
+   Gelände zwischen Erhebungen, **Geländeeinschnitt**". Angehängte Relativsätze
+   („die etwas Gutes bewirkt") und Fortsetzungen („zum Beispiel auch einer
+   Unterlage") sind gefiltert — sie setzen die Definition fort statt sie zu
+   ersetzen.
+2. **Anspruch statt Verwerfen.** Vorher verloren bei einer Kollision *beide*
+   Antworten die Kurzform. Eine Kurzfrage, die genau **einer** Antwort je Länge
+   gehört, ist aber per Konstruktion eindeutig — es gab keinen Grund, sie auch
+   der ersten wegzunehmen. Vergeben wird in Runden über die Kandidatenränge, damit
+   eine Frage mit vielen Ausweichmöglichkeiten nicht die Ansprüche einer Frage mit
+   nur einer verdrängt. Reihenfolge nach Antwort sortiert: willkürlich, aber
+   deterministisch — Pflicht, weil der Katalog in den Rätsel-Seed eingeht.
+
+Ergebnis: **98.039 → 117.971 Kurzfragen (+20 %)**, Antworten ohne jede Kurzform
+**46.882 → 31.529 (−33 %)**, arrow/leicht-Pool je Länge rund +30 %.
+
+Der grössere Pool legte vier weitere Textfehler frei, die vorher zu selten waren,
+um aufzufallen — alle vier behoben und mit Test festgenagelt:
+
+| Fehler im Rätsel | Ursache |
+|---|---|
+| `AALBUCH — Im Osten gelegener Teil v.` | abgekürzte Präpositionen („v.", „d.", „f.") fehlten in der Dangler-Liste |
+| `ACHÄER — Angeh.` | eine Kurzform, die nur aus Abkürzungen besteht, sagt nichts |
+| `ABBAUARBEIT — Meist im Plural: die Tätigkeit` | Kontext-Strip verweigerte, weil „im" wie eine Definition aussah — jetzt erkennt er das geschlossene Marker-Vokabular statt der Abwesenheit von Präpositionen |
+| `ABSCHIED — Auch bildlich; Plural selten}}` | durchgesickerte Wikitext-Klammern; solcher Text ist kaputt, nicht kürzbar, und wird verworfen |
+| `ABADDON — Christliche und jüdische Religion:` | Fachgebiets-Etikett ohne Definition dahinter |
+| `Welche` als ganze Frage | reines Funktionswort — die Listen für „darf nicht enden" und „darf nicht anfangen" sagen zusammen auch „darf nicht daraus bestehen" |
+| `Flaches`, `Beheizbarer`, `Obergäriges` | einwortiges Adjektivfragment |
+
+Beim letzten Punkt lohnt die Notiz, weil ich zuerst falsch abgebogen bin: ich habe
+zweimal Marker-Vokabular nachgetragen („Plural", „Botanik", „zumeist") und war
+immer noch bei 1.603 Kurzformen mit Doppelpunkt. Erst die allgemeine Regel griff:
+**eine Kurzfrage enthält keinen Doppelpunkt** — steht rechts davon etwas
+Brauchbares, gewinnt das, sonst fällt der Kandidat. Für Langformen gilt die Regel
+bewusst nicht: dort trägt der Rest des Satzes genug, um ein Etikett zu verkraften.
 
 **Die Schärfung kostete Füllbarkeit — und deckte dieselbe Doppelschranke zum
 dritten und vierten Mal auf.** Mit 26 % weniger Kurzfragen scheiterte

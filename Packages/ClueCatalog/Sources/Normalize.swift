@@ -189,13 +189,22 @@ public struct ClueNormalizer: Sendable {
         return collapse(out)
     }
 
-    /// Wörter, die eine echte Definition verraten: Präpositionen und Artikel.
-    /// Eine Wiktionary-Kontextangabe ist eine nackte Bezeichnung
-    /// („Rechtssprache", „kein Plural") und enthält keines davon.
-    static let definitionMarkers: Set<String> = [
-        "zur", "zum", "des", "der", "die", "das", "den", "dem", "von", "vom",
-        "für", "mit", "aus", "im", "in", "an", "auf", "bei", "nach", "über",
-        "unter", "um", "zu", "ein", "eine", "einer", "eines", "einem", "einen",
+    /// Wörter, an denen eine Wiktionary-Kontextangabe erkennbar ist.
+    ///
+    /// Der erste Anlauf prüfte auf **Abwesenheit** von Präpositionen und
+    /// Artikeln — nach dem Gedanken, eine Kontextangabe sei eine nackte
+    /// Bezeichnung. Das griff daneben: „Meist im Plural:" enthält „im" und blieb
+    /// deshalb stehen, 167 Clues trugen so eine Grammatikangabe als Frage.
+    /// Umgekehrt ist es verlässlich, denn das Vokabular dieser Angaben ist
+    /// geschlossen — und ein Doppelpunkt in einer echten Definition („Gerät zur
+    /// Messung des Luftdrucks: es zeigt …") enthält keines dieser Wörter.
+    static let contextMarkerWords: Set<String> = [
+        "plural", "singular", "mehrzahl", "einzahl", "meist", "meistens", "nur",
+        "kein", "keine", "selten", "häufig", "übertragen", "bildlich", "veraltet",
+        "veraltend", "gehoben", "umgangssprachlich", "fachsprachlich", "salopp",
+        "scherzhaft", "abwertend", "landschaftlich", "regional", "österreichisch",
+        "schweizerisch", "norddeutsch", "süddeutsch", "rechtssprache",
+        "amtssprache", "jargon", "fachjargon", "seltener", "auch", "zumeist",
     ]
 
     /// Vorangestellte Kontextangaben aus Wiktionary-Bedeutungen.
@@ -207,6 +216,18 @@ public struct ClueNormalizer: Sendable {
     /// entfernt, damit kein echter Doppelpunkt mitten in einer Definition
     /// abgeschnitten wird.
     static func strippingContextPrefix(_ text: String) -> String {
+        // Mehrfach, weil Angaben sich stapeln: „Druckereiwesen: kein Plural: …"
+        // trug beides, und ein einzelner Durchlauf ließ das zweite stehen.
+        var t = text
+        for _ in 0 ..< 3 {
+            let next = strippingOneContextPrefix(t)
+            if next == t { break }
+            t = next
+        }
+        return t
+    }
+
+    private static func strippingOneContextPrefix(_ text: String) -> String {
         guard let colon = text.firstIndex(of: ":") else { return text }
         let prefix = text[text.startIndex ..< colon]
         // Reine Länge genügt nicht: „Gerät zur Messung des Luftdrucks:" ist
@@ -214,14 +235,28 @@ public struct ClueNormalizer: Sendable {
         guard prefix.count <= 40 else { return text }
         let words = prefix.split(whereSeparator: { " ,;".contains($0) })
             .map { $0.lowercased() }
-        guard !words.contains(where: { definitionMarkers.contains($0) }) else { return text }
+        // Entweder eine Grammatikangabe („kein Plural") oder ein einwortiges
+        // Fachgebiet („Botanik:", „Druckereiwesen:"). Ein einzelnes Wort vor
+        // einem Doppelpunkt ist im Wiktionary durchweg ein Etikett; eine echte
+        // Definition davor besteht aus mehreren Wörtern („Gerät zur Messung des
+        // Luftdrucks:").
+        guard words.contains(where: { contextMarkerWords.contains($0) })
+            || words.count == 1 else { return text }
         let rest = collapse(String(text[text.index(after: colon)...]))
         return rest.count >= 8 ? rest : text
     }
 
     /// Langform: aufräumen, nicht umschreiben. Was zu lang ist, wird an einer
     /// Klausengrenze gekappt — und wenn das nicht reicht, verworfen.
+    /// Übriggebliebene Wikitext-Klammern. 33 Clues trugen sie bis in den Katalog
+    /// („ABSCHIED — Auch bildlich; Plural selten}}"). Solcher Text ist nicht
+    /// gekürzt schlecht, sondern kaputt — er wird verworfen, nicht geflickt.
+    static func hasMarkupRemnants(_ text: String) -> Bool {
+        text.contains("{{") || text.contains("}}") || text.contains("[[")
+    }
+
     public func longText(from description: String) -> Result<String, Rejection> {
+        guard !Self.hasMarkupRemnants(description) else { return .failure(.clueTooShort) }
         var t = Self.collapse(
             Self.strippingContextPrefix(description.replacingOccurrences(of: "\n", with: " ")))
         while t.hasSuffix(".") || t.hasSuffix(";") { t.removeLast() }
@@ -264,6 +299,21 @@ public struct ClueNormalizer: Sendable {
         "hat", "haben", "kann", "können", "soll", "sollen",
     ]
 
+    /// Wörter, mit denen ein **Folgesatz** anfängt, der die Definition
+    /// fortsetzt statt sie zu wiederholen. Solche Klauseln taugen nicht als
+    /// eigenständige Kurzfrage: „ABHEBEN — Z.B. auch einer Unterlage" stand so
+    /// im Katalog, aus „Etwas von etwas anderem, zum Beispiel auch einer
+    /// Unterlage". Bewusst getrennt von `clauseOpeners`, weil das eine Frage
+    /// beantwortet („darf hier anfangen?") und nicht die andere („darf hier
+    /// enden?").
+    static let continuationStarters: Set<String> = clauseOpeners.union([
+        "zum", "zur", "auch", "etwa", "besonders", "insbesondere", "meist",
+        "oft", "häufig", "beispielsweise", "ferner", "außerdem", "speziell",
+        "allgemein", "übertragen", "kurz", "bes.", "vor", "im", "in", "bei",
+        "nach", "mit", "ohne", "von", "vom", "für", "als", "bis", "seit",
+        "z.b.", "u.a.", "usw.", "etc.", "sowohl", "entweder", "je",
+    ])
+
     static func trimmingDanglingClause(_ text: String) -> String {
         var words = text.split(separator: " ").map(String.init)
         while let last = words.last, clauseOpeners.contains(last.lowercased())
@@ -283,6 +333,47 @@ public struct ClueNormalizer: Sendable {
         public let aggressive: Bool
     }
 
+    /// Mehrere Kurzform-Kandidaten, absteigend nach Güte.
+    ///
+    /// Warum überhaupt mehrere: 61.990 der 66.428 fehlenden Kurzformen fielen im
+    /// Ambiguitätsgatter, nicht bei der Ableitung. Mit nur einem Kandidaten kann
+    /// das Gatter bei einer Kollision nur verwerfen; mit mehreren kann es
+    /// ausweichen.
+    ///
+    /// Rang 0 ist die bisherige Kurzform (erste Klausel) — die bleibt die beste,
+    /// weil die erste Klausel die eigentliche Definition trägt. Danach kommen die
+    /// **späteren Klauseln**, denn im Wiktionary sind das oft Synonyme und damit
+    /// spezifischer als eine gekappte erste Klausel: „Tiefergelegenes Gelände
+    /// zwischen Erhebungen, Geländeeinschnitt" liefert „Geländeeinschnitt".
+    ///
+    /// Angehängte **Relativsätze** sind keine Synonyme und werden übersprungen:
+    /// „Einmalige Handlung, die etwas Gutes oder Böses bewirkt" darf nicht zu
+    /// „Die etwas Gutes oder Böses bewirkt" werden.
+    public func shortCandidates(from long: String, limit: Int = 4) -> [Short] {
+        var out: [Short] = []
+        var seen: Set<String> = []
+
+        func add(_ s: Short?) {
+            guard let s, out.count < limit else { return }
+            let key = s.text.lowercased()
+            guard !seen.contains(key) else { return }
+            seen.insert(key)
+            out.append(s)
+        }
+
+        add(shortText(from: long))
+
+        let clauses = Self.stripParentheticals(long)
+            .split(whereSeparator: { $0 == "," || $0 == ";" })
+            .map { Self.collapse(String($0)) }
+        for clause in clauses.dropFirst() where out.count < limit {
+            guard let first = clause.split(separator: " ").first?.lowercased(),
+                  !Self.continuationStarters.contains(first) else { continue }
+            add(shortText(from: clause))
+        }
+        return out
+    }
+
     /// Kurzform in eskalierenden Stufen. Jede Stufe wird nur betreten, wenn die
     /// vorige nicht ins Budget passt — abkürzen macht Clues härter zu lesen, also
     /// wird nur abgekürzt, wenn es nötig ist. „Nahrungsmittel" ist besser als
@@ -296,7 +387,22 @@ public struct ClueNormalizer: Sendable {
     /// dadurch schlechter; die Antwort steht dann nur nicht für Schwedenrätsel
     /// zur Verfügung.
     public func shortText(from long: String) -> Short? {
-        var t = Self.stripParentheticals(long)
+        guard !Self.hasMarkupRemnants(long) else { return nil }
+        // Auch hier, nicht nur in `longText`: die Kandidaten aus späteren
+        // Klauseln kommen an `longText` vorbei, und eine solche Klausel kann die
+        // Grammatikangabe tragen („…, zumeist Plural: Dreck").
+        var t = Self.stripParentheticals(Self.strippingContextPrefix(long))
+        // **Eine Kurzfrage enthält keinen Doppelpunkt.** Das Marker-Vokabular
+        // nachzutragen war Flickwerk: 1.603 Kurzformen trugen Etiketten, die kein
+        // Grammatikwort enthalten („Christliche und jüdische Religion:", „Als
+        // Computer:", „Von Stoffen:") — teils mit nichts dahinter. Die Regel gilt
+        // nur hier, nicht für Langformen: dort trägt der Rest des Satzes genug,
+        // um das Etikett zu verkraften.
+        if let colon = t.lastIndex(of: ":") {
+            let after = Self.collapse(String(t[t.index(after: colon)...]))
+            guard after.count >= 5 else { return nil }
+            t = after
+        }
         if let comma = t.firstIndex(of: ",") { t = Self.collapse(String(t[t.startIndex ..< comma])) }
         for article in ["Der ", "Die ", "Das ", "Ein ", "Eine ", "der ", "die ", "das "]
         where t.hasPrefix(article) {
@@ -319,6 +425,10 @@ public struct ClueNormalizer: Sendable {
             "innerhalb", "außerhalb", "entlang", "gegenüber", "neben", "hinter",
             "samt", "statt", "bis", "ab", "je", "pro", "laut", "mittels",
             "ist", "sind", "war", "u.a.", "z.B.", "ca.",
+            // Abgekürzte Funktionswörter: „Teil von" wird zu „Teil v.", und das
+            // „v." hängt am Ende genauso in der Luft wie das ausgeschriebene Wort.
+            // Aus einem gerenderten Fall: „AALBUCH — Im Osten gelegener Teil v."
+            "v.", "f.", "d.", "z.", "u.", "bzw", "usw.", "etc.", "u.ä.", "o.ä.",
         ]).union(
             // Datengetrieben: Abkürzungen, die aus **Adjektiven** entstanden
             // sind ("ital.", "amerik.", "franz."), sind Modifikatoren. Am Ende
@@ -340,9 +450,12 @@ public struct ClueNormalizer: Sendable {
             return words.joined(separator: " ")
         }
 
+        let sourceWordCount = t.split(separator: " ").count
+
         func finish(_ raw: String, aggressive: Bool) -> Short? {
             let candidate = trimDanglers(Self.collapse(raw))
             guard !candidate.isEmpty else { return nil }
+            let wasCut = candidate.split(separator: " ").count < sourceWordCount
             let text = candidate.prefix(1).uppercased() + candidate.dropFirst()
             // Eine **mehrwortige** Kurzform ohne Substantiv ist eine angefangene
             // Wortgruppe: ERDE hatte „Belebter und dritter" (aus „Belebter und
@@ -358,6 +471,27 @@ public struct ClueNormalizer: Sendable {
             // harmloser als die Wortgruppe, aus der es kam. Siehe README,
             // Abschnitt „Bekannte Lücken".
             let words = text.split(separator: " ").map(String.init)
+            // Eine Kurzform, die nur aus Abkürzungen besteht, sagt nichts:
+            // „ACHÄER — Angeh." stand so im Katalog. Ein Punkt am Wortende ist
+            // hier verlässlich, weil die Abkürzungstabelle ihn selbst setzt.
+            if words.allSatisfy({ $0.hasSuffix(".") }) { return nil }
+            // Reine Funktionswörter sind keine Frage: „Welche" stand so im
+            // gerenderten Rätsel. Die Listen, die sagen, womit eine Frage nicht
+            // enden und nicht anfangen darf, sagen zusammen auch, woraus sie
+            // nicht bestehen darf.
+            if words.allSatisfy({ danglers.contains($0.lowercased())
+                                  || Self.continuationStarters.contains($0.lowercased()) }) {
+                return nil
+            }
+            // Ein einzelnes Wort mit starker Adjektivendung, das aus einer
+            // längeren Wortgruppe **herausgeschnitten** wurde, ist ein Fragment:
+            // „Flaches", „Beheizbarer", „Obergäriges" standen so im Rätsel. Der
+            // Schnitt ist die Bedingung, die den Unterschied macht — „Zucker"
+            // und „Sonne" stehen so in der Quelle und bleiben deshalb.
+            if words.count == 1, wasCut,
+               ["es", "er", "en", "em"].contains(where: { text.lowercased().hasSuffix($0) }) {
+                return nil
+            }
             if words.count > 1,
                !words.dropFirst().contains(where: { $0.first?.isUppercase == true }) {
                 return nil

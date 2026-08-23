@@ -21,6 +21,9 @@ public struct ImportReport: Sendable {
     public var shortDroppedAmbiguous = 0
     public var shortDroppedGeneric = 0
     public var shortDroppedWordClass = 0
+    /// Kurzformen, die einem Ausweich-Kandidaten zugeteilt wurden, weil der
+    /// bevorzugte schon vergeben war.
+    public var shortReassigned = 0
 
     mutating func reject(_ r: Rejection) { rejections[r, default: 0] += 1 }
 }
@@ -113,16 +116,17 @@ public struct CatalogAssembler: Sendable {
                 if seenTexts[surface]?.contains(long.lowercased()) == true { continue }
                 seenTexts[surface, default: []].insert(long.lowercased())
 
-                let short = normalizer.shortText(from: long).flatMap {
-                    ClueNormalizer.clueLeaksAnswer(clue: $0.text, answerSurface: surface)
-                        ? nil : $0
+                let options = normalizer.shortCandidates(from: long).filter {
+                    !ClueNormalizer.clueLeaksAnswer(clue: $0.text, answerSurface: surface)
                 }
+                let short = options.first
                 let tier = Frequency.tier(zipf: zipf, flags: flags,
                                           aggressivelyShortened: short?.aggressive ?? false)
                 clues[surface, default: []].append(CatalogClue(
                     text: long, shortText: short?.text, shortWidth: short?.width,
                     kind: desc.source.clueKind, tier: tier, locale: "de",
-                    license: desc.source.license, sourceRef: entry.sourceRef))
+                    license: desc.source.license, sourceRef: entry.sourceRef,
+                    shortOptions: options))
                 report.bySource[desc.source.rawValue, default: 0] += 1
                 produced += 1
             }
@@ -209,66 +213,108 @@ public struct CatalogAssembler: Sendable {
         func length(_ surface: String) -> Int {
             Alphabet.normalize(surface)?.count ?? surface.count
         }
-        var longIndex: [String: Set<String>] = [:]
-        var shortIndex: [String: Set<String>] = [:]
-        /// Ohne Längenschlüssel: zählt, für wie viele Antworten eine Kurzform
-        /// überhaupt taugt.
-        var shortGlobal: [String: Set<String>] = [:]
 
+        // ---- Langformen: unverändert verwerfen bei drei Kollisionen ----
+        var longIndex: [String: Set<String>] = [:]
         for (surface, cs) in clues {
             let len = length(surface)
-            for c in cs {
-                longIndex["\(len)|\(c.text.lowercased())", default: []].insert(surface)
-                if let s = c.shortText {
-                    let key = s.lowercased()
-                    shortIndex["\(len)|\(key)", default: []].insert(surface)
-                    shortGlobal[key, default: []].insert(surface)
+            for c in cs { longIndex["\(len)|\(c.text.lowercased())", default: []].insert(surface) }
+        }
+        for surface in clues.keys.sorted() {
+            let len = length(surface)
+            clues[surface] = clues[surface]!.filter { c in
+                if (longIndex["\(len)|\(c.text.lowercased())"]?.count ?? 0) >= 3 {
+                    report.ambiguousDropped += 1
+                    return false
+                }
+                return true
+            }
+        }
+
+        // ---- Kurzformen: vergeben, nicht verwerfen ----
+        //
+        // Vorher verloren bei einer Kollision **beide** Antworten die Kurzform:
+        // 46.183 Verluste allein durch gleiche Länge. Dabei ist eine Kurzfrage,
+        // die genau **einer** Antwort je Länge gehört, per Konstruktion eindeutig
+        // — es gibt keinen Grund, sie auch der ersten wegzunehmen.
+        //
+        // Vergeben wird in **Runden über die Kandidatenränge**: in Runde 0 meldet
+        // jede Frage ihren besten Kandidaten an, in Runde 1 weichen nur die aus,
+        // die leer ausgegangen sind. Sonst würde eine Frage mit vielen Kandidaten
+        // die Ansprüche einer Frage mit nur einem verdrängen.
+        //
+        // Reihenfolge innerhalb einer Runde: nach Antwort sortiert. Willkürlich,
+        // aber deterministisch — und Determinismus ist hier Pflicht, weil der
+        // Katalog in den Rätsel-Seed eingeht.
+        var ownerByLengthKey: [String: String] = [:]
+        var surfacesByKey: [String: Set<String>] = [:]
+
+        struct Slot: Hashable { let surface: String; let index: Int }
+        var pending: [Slot] = []
+        for surface in clues.keys.sorted() {
+            for i in clues[surface]!.indices where !clues[surface]![i].shortOptions.isEmpty {
+                pending.append(Slot(surface: surface, index: i))
+            }
+        }
+        let maxRank = pending.reduce(0) {
+            max($0, clues[$1.surface]![$1.index].shortOptions.count)
+        }
+        var settled: Set<Slot> = []
+
+        for rank in 0 ..< maxRank {
+            for slot in pending where !settled.contains(slot) {
+                let options = clues[slot.surface]![slot.index].shortOptions
+                guard rank < options.count else { continue }
+                let candidate = options[rank]
+                let key = candidate.text.lowercased()
+                let len = length(slot.surface)
+                let wordClass = answers[slot.surface]?.wordClass ?? ""
+
+                // Gleiche Länge: höchstens eine Antwort. Dieselbe Antwort darf
+                // denselben Text für eine zweite Frage nicht doppelt belegen.
+                if let owner = ownerByLengthKey["\(len)|\(key)"], owner != slot.surface {
+                    report.shortDroppedAmbiguous += 1
+                    continue
+                }
+                // Katalogweit: zu viele Antworten heißt generisch.
+                var holders = surfacesByKey[key] ?? []
+                if !holders.contains(slot.surface),
+                   holders.count >= Self.genericShortClueLimit - 1 {
+                    report.shortDroppedGeneric += 1
+                    continue
+                }
+                if Self.nonNounClasses.contains(wordClass),
+                   Self.looksLikeSingleNoun(candidate.text) {
+                    report.shortDroppedWordClass += 1
+                    continue
+                }
+
+                ownerByLengthKey["\(len)|\(key)"] = slot.surface
+                holders.insert(slot.surface)
+                surfacesByKey[key] = holders
+                settled.insert(slot)
+
+                clues[slot.surface]![slot.index].shortText = candidate.text
+                clues[slot.surface]![slot.index].shortWidth = candidate.width
+                if rank > 0, let a = answers[slot.surface] {
+                    // Ein ausgewichener Kandidat kann stärker gekürzt sein als
+                    // der bevorzugte — dann steigt das Tier.
+                    clues[slot.surface]![slot.index].tier = Frequency.tier(
+                        zipf: a.zipf, flags: a.flags,
+                        aggressivelyShortened: candidate.aggressive)
+                    report.shortReassigned += 1
                 }
             }
         }
 
-        for (surface, cs) in clues {
-            let len = length(surface)
-            let wordClass = answers[surface]?.wordClass ?? ""
-            var kept: [CatalogClue] = []
-            for var c in cs {
-                // Langform: unverändert bei drei Kollisionen gleicher Länge.
-                if (longIndex["\(len)|\(c.text.lowercased())"]?.count ?? 0) >= 3 {
-                    report.ambiguousDropped += 1
-                    continue
-                }
-
-                if let short = c.shortText {
-                    let key = short.lowercased()
-                    var drop = false
-
-                    // Kurzformen strenger: **zwei** reichen. Eine Kurzfrage, die
-                    // auf zwei Antworten gleicher Länge passt, ist im Gitter
-                    // nicht mehr entscheidbar — bei der Langform bleibt wenigstens
-                    // der Rest des Satzes zur Unterscheidung.
-                    if (shortIndex["\(len)|\(key)"]?.count ?? 0) >= 2 {
-                        report.shortDroppedAmbiguous += 1
-                        drop = true
-                    } else if (shortGlobal[key]?.count ?? 0) >= Self.genericShortClueLimit {
-                        report.shortDroppedGeneric += 1
-                        drop = true
-                    } else if Self.nonNounClasses.contains(wordClass),
-                              Self.looksLikeSingleNoun(short) {
-                        report.shortDroppedWordClass += 1
-                        drop = true
-                    }
-
-                    if drop {
-                        // Nur die Kurzform fällt weg — die Langform bleibt
-                        // brauchbar, das Wort steht dann für `classic` zur Verfügung.
-                        c.shortText = nil
-                        c.shortWidth = nil
-                        report.ambiguousDropped += 1
-                    }
-                }
-                kept.append(c)
-            }
-            clues[surface] = kept
+        // Wer in keiner Runde zum Zug kam, behält nur die Langform.
+        for slot in pending where !settled.contains(slot) {
+            clues[slot.surface]![slot.index].shortText = nil
+            clues[slot.surface]![slot.index].shortWidth = nil
+        }
+        // Kandidatenlisten werden nicht persistiert.
+        for surface in clues.keys {
+            for i in clues[surface]!.indices { clues[surface]![i].shortOptions = [] }
         }
     }
 }

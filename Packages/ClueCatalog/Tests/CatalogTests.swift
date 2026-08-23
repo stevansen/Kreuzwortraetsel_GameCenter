@@ -92,10 +92,28 @@ struct ShortClueTests {
         let n = ClueNormalizer(abbreviations: try loadAbbreviations(), widths: loadWidths(),
                               singleBudget: 6_500)
         // „Feine Zucker- und" ist kein Clue, sondern ein Satzanfang.
-        let s = try #require(n.shortText(from: "Bezeichnung für feine Zucker- und Backwaren"))
-        #expect(!s.text.hasSuffix("und"))
-        #expect(!s.text.hasSuffix("-"))
-        #expect(s.width <= 6_500)
+        //
+        // Kein `#require`: bei diesem Budget bleibt inzwischen **nichts** übrig.
+        // Die Leiter endet bei „Bez." (Abkürzung allein) und „Bez. f. feine"
+        // (mehrwortig ohne Substantiv) — beides zu Recht verworfen. Der Test
+        // prüft die Dangler-Eigenschaft, nicht die Existenz einer Kurzform; das
+        // war vorher nur beiläufig mitgefordert.
+        let s = n.shortText(from: "Bezeichnung für feine Zucker- und Backwaren")
+        if let s {
+            #expect(!s.text.hasSuffix("und"))
+            #expect(!s.text.hasSuffix("-"))
+            #expect(s.width <= 6_500)
+        }
+        // Damit die Zusage oben nicht leerläuft: ein Fall, in dem wirklich
+        // geschnitten wird und trotzdem eine Kurzform entsteht. Gemessen, nicht
+        // geraten — „Feine Zucker- und Backwaren aus Weizenmehl" wird bei 16.000
+        // hinter „Backwaren" gekappt, und „und" bzw. „-" bleiben nicht stehen.
+        let wide = ClueNormalizer(abbreviations: try loadAbbreviations(), widths: loadWidths(),
+                                  singleBudget: 16_000)
+        let w = try #require(wide.shortText(from: "Feine Zucker- und Backwaren aus Weizenmehl"))
+        #expect(w.text == "Feine Zucker- und Backwaren")
+        #expect(!w.text.hasSuffix("und"))
+        #expect(!w.text.hasSuffix("-"))
     }
 
     @Test func shortTextDropsDanglingAdjectiveAbbreviations() throws {
@@ -467,5 +485,121 @@ struct ClueSharpnessTests {
         let source = "Gerät zur Messung des Luftdrucks: es zeigt Wetteränderungen an"
         let t = try n.longText(from: source).get()
         #expect(t.hasPrefix("Gerät zur Messung"))
+    }
+}
+
+@Suite("Kurzform-Kandidaten")
+struct ShortCandidateTests {
+    private func normalizer(_ budget: Int = 9_500) throws -> ClueNormalizer {
+        ClueNormalizer(abbreviations: try loadAbbreviations(), widths: loadWidths(),
+                       singleBudget: budget)
+    }
+
+    @Test func laterClausesBecomeFallbackCandidates() throws {
+        // Budget einer Einzelzelle: bei 9.500 kürzt die Leiter Rang 0 auf ein
+        // Wort, und der Vergleich prüfte dann nicht mehr das Gemeinte.
+        let n = try normalizer(16_000)
+        // Der zweite Teilsatz ist ein Synonym und damit ein guter Ausweich-
+        // Kandidat, wenn „Tiefergelegenes Gelände" schon vergeben ist.
+        let c = n.shortCandidates(
+            from: "Tiefergelegenes Gelände zwischen Erhebungen, Geländeeinschnitt")
+        #expect(c.count >= 2)
+        #expect(c.contains { $0.text == "Geländeeinschnitt" })
+        // Rang 0 bleibt die erste Klausel.
+        #expect(c[0].text == "Tiefergelegenes Gelände")
+    }
+
+    @Test func continuationClausesAreNotCandidates() throws {
+        let n = try normalizer()
+        // „ABHEBEN — Z.B. auch einer Unterlage" stand so im Katalog. Ein
+        // Folgesatz setzt die Definition fort, er ersetzt sie nicht.
+        let c = n.shortCandidates(
+            from: "Etwas von etwas anderem, zum Beispiel auch einer Unterlage")
+        #expect(!c.contains { $0.text.lowercased().hasPrefix("z.b.") })
+    }
+
+    @Test func relativeClausesAreNotCandidates() throws {
+        let n = try normalizer()
+        let c = n.shortCandidates(from: "Einmalige Handlung, die etwas Gutes bewirkt")
+        #expect(!c.contains { $0.text.lowercased().hasPrefix("die etwas") })
+    }
+
+    @Test func grammarMarkerPrefixesAreStripped() throws {
+        let n = try normalizer(16_000)
+        // „ABBAUARBEIT — Meist im Plural: die Tätigkeit" stand so im Katalog.
+        // Der erste Anlauf ließ das stehen, weil „im" wie eine Definition aussah.
+        let t = try n.longText(from: "Meist im Plural: die Tätigkeit des Abbauens").get()
+        #expect(!t.lowercased().hasPrefix("meist"))
+        #expect(t.hasPrefix("Die Tätigkeit") || t.hasPrefix("die Tätigkeit"))
+    }
+
+    @Test func realColonsSurviveTheMarkerRule() throws {
+        let n = try normalizer(16_000)
+        // Gegenprobe: ein Doppelpunkt ohne Grammatikangabe bleibt.
+        let t = try n.longText(
+            from: "Gerät zur Messung des Luftdrucks: es zeigt Wetteränderungen an").get()
+        #expect(t.hasPrefix("Gerät zur Messung"))
+    }
+
+    @Test func markupRemnantsRejectTheClue() throws {
+        let n = try normalizer(16_000)
+        // „ABSCHIED — Auch bildlich; Plural selten}}" stand so im Katalog.
+        #expect(n.shortText(from: "Auch bildlich; Plural selten}}") == nil)
+        #expect((try? n.longText(from: "Trennung von jemandem}}").get()) == nil)
+    }
+
+    @Test func functionWordsAloneAreNoClue() throws {
+        let n = try normalizer(16_000)
+        // „Welche" stand so als Frage im gerenderten Rätsel.
+        #expect(n.shortText(from: "Welche") == nil)
+        #expect(n.shortText(from: "Und auch") == nil)
+    }
+
+    @Test func cutSingleAdjectivesAreRejected() throws {
+        let n = try normalizer(4_000)
+        // „Flaches", „Beheizbarer", „Obergäriges" standen so im Rätsel — jedes
+        // aus einer längeren Wortgruppe herausgeschnitten.
+        for source in ["Flaches Gebäck aus Mürbeteig",
+                       "Beheizbarer Raum in einem Gebäude",
+                       "Obergäriges Bier aus Weizenmalz"] {
+            let s = n.shortText(from: source)
+            #expect(s?.text.split(separator: " ").count != 1
+                    || !["es", "er"].contains { s!.text.lowercased().hasSuffix($0) },
+                    "Fragment aus \(source): \(s?.text ?? "nil")")
+        }
+    }
+
+    @Test func uncutSingleWordsSurvive() throws {
+        let n = try normalizer(16_000)
+        // Gegenprobe: steht das Wort so in der Quelle, wurde nichts verloren.
+        #expect(n.shortText(from: "Zucker")?.text == "Zucker")
+        #expect(n.shortText(from: "Sonne")?.text == "Sonne")
+    }
+
+    @Test func shortFormsNeverContainAColon() throws {
+        let n = try normalizer(16_000)
+        // „ABADDON — Christliche und jüdische Religion:" stand so im Katalog,
+        // mit nichts hinter dem Doppelpunkt.
+        #expect(n.shortText(from: "Christliche und jüdische Religion:") == nil)
+        // Steht etwas Brauchbares dahinter, gewinnt das.
+        let s = try #require(n.shortText(from: "Kurz für: mehrere Nebenflüsse in Bayern"))
+        #expect(!s.text.contains(":"))
+        #expect(s.text.hasPrefix("Mehrere Nebenflüsse"))
+    }
+
+    @Test func abbreviationOnlyShortFormIsRejected() throws {
+        // Enges Budget erzwingt die Abkürzung — „ACHÄER — Angeh." stand so im
+        // Katalog und sagt nichts.
+        let n = try normalizer(3_000)
+        let s = n.shortText(from: "Angehöriger eines der vier altgriechischen Hauptstämme")
+        #expect(s == nil || !s!.text.split(separator: " ").allSatisfy { $0.hasSuffix(".") })
+    }
+
+    @Test func abbreviatedPrepositionsDoNotDangle() throws {
+        let n = try normalizer(11_000)
+        // „AALBUCH — Im Osten gelegener Teil v." stand so im Katalog.
+        let s = try #require(n.shortText(from: "Im Osten gelegener Teil der Schwäbischen Alb"))
+        #expect(!s.text.hasSuffix("v."))
+        #expect(!s.text.hasSuffix("d."))
     }
 }

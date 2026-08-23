@@ -39,6 +39,12 @@ public struct CatalogClue: Sendable {
     public var locale: String
     public var license: String
     public var sourceRef: String
+    /// Kurzform-Kandidaten, absteigend nach Güte — **nicht persistiert**.
+    ///
+    /// Existiert nur zwischen Ableitung und Ambiguitätsgatter: das Gatter vergibt
+    /// Kurzformen und braucht dafür Ausweichmöglichkeiten. Nach dem Gatter steht
+    /// die Entscheidung in `shortText`, und dieses Feld wird nicht geschrieben.
+    public var shortOptions: [ClueNormalizer.Short] = []
 }
 
 public enum CatalogSchema {

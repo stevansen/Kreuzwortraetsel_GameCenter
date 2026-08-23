@@ -190,6 +190,7 @@ func printReport(_ r: ImportReport, singleBudget: Int, doubleBudget: Int) {
     print("Verworfene Kurzformen: \(r.shortDroppedAmbiguous) mehrdeutig (gleiche Länge), "
         + "\(r.shortDroppedGeneric) generisch (katalogweit), "
         + "\(r.shortDroppedWordClass) Wortart passt nicht")
+    print("Kurzformen an Ausweich-Kandidaten vergeben: \(r.shortReassigned)")
 
     print("\nClues nach Quelle:")
     for (s, n) in r.bySource.sorted(by: { $0.value > $1.value }) { print("  \(pad(s, 18)) \(n)") }
