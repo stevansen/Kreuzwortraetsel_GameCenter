@@ -1,0 +1,308 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D7DB88C2747A18A0C6B68BA3 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */; };
+		95140CBCBF751AA7F548E156 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5420869B93AA8C8198B23B2E /* HomeView.swift */; };
+		6A7D73054BA50994B5296C27 /* KreuzwortApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */; };
+		F00B6CB6834559DED84F4E85 /* PlatformSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */; };
+		2F9C526FF8816ECFD5293D9C /* PuzzleKit in Frameworks */ = {isa = PBXBuildFile; productRef = 22F794351E6C67B13E815E1A /* PuzzleKit */; };
+		C5D96A6B7D5A6A71B6594F2D /* ClueCatalog in Frameworks */ = {isa = PBXBuildFile; productRef = C81CF6D6E2105C7E00E10DD2 /* ClueCatalog */; };
+		89E97945358667E4C83070FE /* KreuzwortUI in Frameworks */ = {isa = PBXBuildFile; productRef = DC83A211F60CEC7F3C823B72 /* KreuzwortUI */; };
+		A408D54658691A50A2C17689 /* SyncKit in Frameworks */ = {isa = PBXBuildFile; productRef = D274AE930DEDAB6C390EEAE6 /* SyncKit */; };
+		6C1534DA43165C774C883664 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 4C72359361FE565684D4CF86 /* Resources */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		85673086EF6CFD3A1F8591AF /* Kreuzwort.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kreuzwort.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		5420869B93AA8C8198B23B2E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KreuzwortApp.swift; sourceTree = "<group>"; };
+		1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformSurface.swift; sourceTree = "<group>"; };
+		4C72359361FE565684D4CF86 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = ../Resources; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		69BE8A4D8E4D9DA4E7DB3928 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2F9C526FF8816ECFD5293D9C /* PuzzleKit in Frameworks */,
+				C5D96A6B7D5A6A71B6594F2D /* ClueCatalog in Frameworks */,
+				89E97945358667E4C83070FE /* KreuzwortUI in Frameworks */,
+				A408D54658691A50A2C17689 /* SyncKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E50290A24C49A459B43487C5 = {
+			isa = PBXGroup;
+			children = (
+				69F8D45498D7E20DA99BB780 /* Kreuzwort */,
+				4C72359361FE565684D4CF86 /* Resources */,
+				328EC33DF3954DC9B83FA285 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		69F8D45498D7E20DA99BB780 /* Kreuzwort */ = {
+			isa = PBXGroup;
+			children = (
+				20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */,
+				5420869B93AA8C8198B23B2E /* HomeView.swift */,
+				B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */,
+				1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */,
+			);
+			path = Kreuzwort;
+			sourceTree = "<group>";
+		};
+		328EC33DF3954DC9B83FA285 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				85673086EF6CFD3A1F8591AF /* Kreuzwort.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E8A3AD980EC179856012B7E /* Kreuzwort */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B483F6EB73610DE752E457A0;
+			buildPhases = (
+				4E57AE888889001C06A4F7E8 /* Sources */,
+				69BE8A4D8E4D9DA4E7DB3928 /* Frameworks */,
+				D6C9E8A172005E68A1DD674F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Kreuzwort;
+			packageProductDependencies = (
+				22F794351E6C67B13E815E1A /* PuzzleKit */,
+				C81CF6D6E2105C7E00E10DD2 /* ClueCatalog */,
+				DC83A211F60CEC7F3C823B72 /* KreuzwortUI */,
+				D274AE930DEDAB6C390EEAE6 /* SyncKit */,
+			);
+			productName = Kreuzwort;
+			productReference = 85673086EF6CFD3A1F8591AF /* Kreuzwort.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					0E8A3AD980EC179856012B7E = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = 41A2CC2D5321B7BB2E956CA5;
+			developmentRegion = de;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				de,
+				en,
+				it,
+				Base,
+			);
+			mainGroup = E50290A24C49A459B43487C5;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4B2C8A9ED36C04F6D64573E1 /* KreuzwortCore */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 328EC33DF3954DC9B83FA285 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0E8A3AD980EC179856012B7E /* Kreuzwort */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D6C9E8A172005E68A1DD674F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6C1534DA43165C774C883664 /* Resources in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4E57AE888889001C06A4F7E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7DB88C2747A18A0C6B68BA3 /* AppEnvironment.swift in Sources */,
+				95140CBCBF751AA7F548E156 /* HomeView.swift in Sources */,
+				6A7D73054BA50994B5296C27 /* KreuzwortApp.swift in Sources */,
+				F00B6CB6834559DED84F4E85 /* PlatformSurface.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		89E1FD6268CC0F221A2BE178 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1 $(inherited)";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		E6DE6C99132752C914FEF632 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				SDKROOT = auto;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		7082CC0B6FC1282FCEABD07A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kreuzwort;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../Frameworks";
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		639A7CA24D39909E713B47F7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Kreuzwort;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../Frameworks";
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		41A2CC2D5321B7BB2E956CA5 /* Build configuration list for PBXProject */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				89E1FD6268CC0F221A2BE178 /* Debug */,
+				E6DE6C99132752C914FEF632 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B483F6EB73610DE752E457A0 /* Build configuration list for PBXNativeTarget */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7082CC0B6FC1282FCEABD07A /* Debug */,
+				639A7CA24D39909E713B47F7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4B2C8A9ED36C04F6D64573E1 /* KreuzwortCore */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ..;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		22F794351E6C67B13E815E1A /* PuzzleKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PuzzleKit;
+		};
+		C81CF6D6E2105C7E00E10DD2 /* ClueCatalog */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ClueCatalog;
+		};
+		DC83A211F60CEC7F3C823B72 /* KreuzwortUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KreuzwortUI;
+		};
+		D274AE930DEDAB6C390EEAE6 /* SyncKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SyncKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}

@@ -40,7 +40,8 @@ public enum Direction: UInt8, Codable, Sendable, CaseIterable {
 
     public var delta: (dr: Int, dc: Int) { self == .across ? (0, 1) : (1, 0) }
     public var opposite: Direction { self == .across ? .down : .across }
-    public var label: String { self == .across ? "waagrecht" : "senkrecht" }
+    /// Nur für CLI-Ausgabe und Debugging, siehe `PuzzleVariant.debugLabel`.
+    public var debugLabel: String { self == .across ? "waagrecht" : "senkrecht" }
 }
 
 public enum CellKind: UInt8, Codable, Sendable {

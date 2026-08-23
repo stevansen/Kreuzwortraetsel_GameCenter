@@ -57,11 +57,11 @@ public extension LayoutProvider {
 
         for r in runs where r.length == 2 {
             issues.append(.init(.error, "run-length-2",
-                "Lauf der Länge 2 bei \(r.start) \(r.direction.label) — zwei benachbarte Buchstaben müssen ein Wort bilden"))
+                "Lauf der Länge 2 bei \(r.start) \(r.direction.debugLabel) — zwei benachbarte Buchstaben müssen ein Wort bilden"))
         }
         for r in runs where r.length > profile.wordLength.upperBound {
             issues.append(.init(.error, "run-too-long",
-                "Lauf der Länge \(r.length) bei \(r.start) \(r.direction.label) überschreitet \(profile.wordLength.upperBound)"))
+                "Lauf der Länge \(r.length) bei \(r.start) \(r.direction.debugLabel) überschreitet \(profile.wordLength.upperBound)"))
         }
         for i in 0 ..< topology.size.area where topology.kinds[i] == .letter {
             if topology.slotsByCell[i].isEmpty {

@@ -1,0 +1,71 @@
+/* Kreuzwort — interface strings, English.
+   Puzzle content stays German: the clue catalogue is built from German sources. */
+
+"variant.classic" = "Classic";
+"variant.arrow" = "Arrow crossword";
+
+"difficulty.leicht" = "Easy";
+"difficulty.mittel" = "Medium";
+"difficulty.schwer" = "Hard";
+"difficulty.experte" = "Expert";
+
+"direction.across" = "across";
+"direction.down" = "down";
+
+"score.base" = "Base value";
+"score.size" = "Grid size";
+"score.time" = "Time";
+"score.timeWithoutBonus" = "Time (bonus withheld)";
+"score.clean" = "No hints used";
+"score.streak" = "Streak";
+"score.daily" = "Daily puzzle";
+"score.hints" = "Hints";
+"score.total" = "Points";
+
+"clue.none" = "No clue selected";
+"clue.previous" = "Previous clue";
+"clue.next" = "Next clue";
+"clue.letters" = "%lld letters";
+
+"cluelist.across" = "Across";
+"cluelist.down" = "Down";
+"cluelist.all" = "Clues";
+"cluelist.complete" = "complete";
+
+"grid.cell.position" = "Row %lld, column %lld";
+"grid.cell.empty" = "empty";
+"grid.cell.partOf" = "Part of: %@, %@, %lld letters";
+"grid.cell.flagged" = "marked as wrong";
+"grid.clueCell.empty" = "empty clue cell";
+"grid.clueCell.clue" = "Clue: %@, arrow %@";
+
+"action.questions" = "Clues";
+"action.revealLetter" = "Reveal letter";
+"action.revealWord" = "Reveal word";
+"action.check" = "Check";
+"action.pencilOn" = "Mark as uncertain";
+"action.pencilOff" = "Mark as certain";
+
+"completion.title" = "Solved";
+"completion.duration" = "Time %lld min %lld s";
+"completion.next" = "Next puzzle";
+
+"time.elapsed" = "Playing time %@";
+
+
+"home.title" = "Kreuzwort";
+"home.daily" = "Daily puzzle";
+"home.dailyHint" = "New every day, the same for everyone";
+"home.newPuzzle" = "New puzzle";
+"home.variant" = "Variant";
+"home.difficulty" = "Difficulty";
+"home.start" = "Play";
+"home.resume" = "Continue";
+"home.language" = "Language";
+"home.languageSystem" = "System language";
+"app.loading" = "Loading catalogue …";
+"app.loadFailed" = "Could not start";
+"app.retry" = "Try again";
+"error.catalogMissing" = "The clue catalogue was not found. Run catalogbuild first.";
+"error.emptyCatalog" = "The clue catalogue is empty.";
+"error.notReady" = "The catalogue has not finished loading.";

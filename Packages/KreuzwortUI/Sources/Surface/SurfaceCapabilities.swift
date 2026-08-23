@@ -53,6 +53,12 @@ public struct SurfaceCapabilities: Sendable, Hashable {
         rendersInCellClues: true, hasHardwareKeyboard: true, hasPointer: true,
         hasFocusEngine: false, supportsZoomPan: false, viewingDistance: .medium)
 
+    /// Großes Tablet: Platz für die Seitenspalte wie am Schreibtisch, aber Touch
+    /// — also größere Trefferflächen und Zoom.
+    public static let desktopTouch = SurfaceCapabilities(
+        rendersInCellClues: true, hasHardwareKeyboard: false, hasPointer: true,
+        hasFocusEngine: false, supportsZoomPan: true, viewingDistance: .near)
+
     /// Wohnzimmer: Fokus-Fernbedienung, kein Zeiger, keine Fragen in Zellen.
     public static let livingRoom = SurfaceCapabilities(
         rendersInCellClues: false, hasHardwareKeyboard: false, hasPointer: false,

@@ -65,7 +65,7 @@ public enum AsciiRender {
     public static func summary(_ puzzle: Puzzle) -> String {
         let shortCount = puzzle.entries.count { $0.clueShortText != nil }
         return """
-        \(puzzle.variant.label) · \(puzzle.difficulty.label) · \(puzzle.size.label)
+        \(puzzle.variant.debugLabel) · \(puzzle.difficulty.debugLabel) · \(puzzle.size.label)
         Seed \(puzzle.seed) · ID \(puzzle.id) · genVer \(puzzle.generatorVersion) \
         · katVer \(puzzle.catalogVersion)
         \(puzzle.entries.count) Wörter · \(puzzle.letterCellCount) Buchstabenzellen \

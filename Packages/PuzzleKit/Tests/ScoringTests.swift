@@ -104,16 +104,23 @@ struct ScoringTests {
     }
 
     @Test func breakdownExplainsTheResult() {
+        // Die Zeilen tragen **Arten**, keine Texte: der Kern kann ohne Foundation
+        // nicht lokalisieren, und die App gibt es in drei Sprachen.
         let b = Scoring.score(input(hints: HintUsage(lettersRevealed: 1),
                                     streak: 3, daily: true))
-        let labels: [String] = b.lines.map { $0.label }
-        #expect(labels.first == "Grundwert")
-        #expect(labels.last == "Punkte")
-        #expect(labels.contains("Serie"))
-        #expect(labels.contains("Tagesrätsel"))
-        #expect(labels.contains("Hilfen"))
-        // Ohne Hilfen gäbe es keine Hilfen-Zeile.
-        let cleanLabels: [String] = Scoring.score(input()).lines.map { $0.label }
-        #expect(!cleanLabels.contains("Hilfen"))
+        let kinds = b.lines.map(\.kind)
+        #expect(kinds.first == .base)
+        #expect(kinds.last == .total)
+        #expect(kinds.contains(.streak))
+        #expect(kinds.contains(.daily))
+        #expect(kinds.contains(.hints))
+        #expect(b.lines.first(where: { $0.kind == .base })?.value == "100"
+            || b.lines.first(where: { $0.kind == .base })?.value == "250")
+
+        // Ohne Hilfen gäbe es keine Hilfen-Zeile — und ohne Serie keine Serienzeile.
+        let cleanKinds = Scoring.score(input()).lines.map(\.kind)
+        #expect(!cleanKinds.contains(.hints))
+        #expect(!cleanKinds.contains(.streak))
+        #expect(!cleanKinds.contains(.daily))
     }
 }

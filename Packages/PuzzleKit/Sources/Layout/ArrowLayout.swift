@@ -542,7 +542,7 @@ public struct ArrowLayout: LayoutProvider {
             }
             if arrow.runDirection != s.direction {
                 issues.append(.init(.error, "arrow-direction-mismatch",
-                    "Pfeil \(arrow.rawValue) läuft nicht \(s.direction.label)"))
+                    "Pfeil \(arrow.rawValue) läuft nicht \(s.direction.debugLabel)"))
             }
         }
 

@@ -1,0 +1,72 @@
+/* Kreuzwort — Oberflächentexte, Deutsch.
+   Schlüssel sind semantisch, nicht deutsch: drei Sprachen sind gleichberechtigt,
+   und ein deutscher Schlüssel hätte Deutsch heimlich zur Referenz gemacht. */
+
+"variant.classic" = "Klassisch";
+"variant.arrow" = "Schwedenrätsel";
+
+"difficulty.leicht" = "Leicht";
+"difficulty.mittel" = "Mittel";
+"difficulty.schwer" = "Schwer";
+"difficulty.experte" = "Experte";
+
+"direction.across" = "waagrecht";
+"direction.down" = "senkrecht";
+
+"score.base" = "Grundwert";
+"score.size" = "Gittergröße";
+"score.time" = "Zeit";
+"score.timeWithoutBonus" = "Zeit (Bonus gestrichen)";
+"score.clean" = "Ohne Hilfe";
+"score.streak" = "Serie";
+"score.daily" = "Tagesrätsel";
+"score.hints" = "Hilfen";
+"score.total" = "Punkte";
+
+"clue.none" = "Keine Frage ausgewählt";
+"clue.previous" = "Vorige Frage";
+"clue.next" = "Nächste Frage";
+"clue.letters" = "%lld Buchstaben";
+
+"cluelist.across" = "Waagrecht";
+"cluelist.down" = "Senkrecht";
+"cluelist.all" = "Fragen";
+"cluelist.complete" = "vollständig";
+
+"grid.cell.position" = "Zeile %lld, Spalte %lld";
+"grid.cell.empty" = "leer";
+"grid.cell.partOf" = "Teil von: %@, %@, %lld Buchstaben";
+"grid.cell.flagged" = "als falsch markiert";
+"grid.clueCell.empty" = "leere Fragezelle";
+"grid.clueCell.clue" = "Frage: %@, Pfeil %@";
+
+"action.questions" = "Fragen";
+"action.revealLetter" = "Buchstabe zeigen";
+"action.revealWord" = "Wort zeigen";
+"action.check" = "Prüfen";
+"action.pencilOn" = "Unsicher eintragen";
+"action.pencilOff" = "Sicher eintragen";
+
+"completion.title" = "Gelöst";
+"completion.duration" = "Dauer %lld min %lld s";
+"completion.next" = "Nächstes Rätsel";
+
+"time.elapsed" = "Spielzeit %@";
+
+
+"home.title" = "Kreuzwort";
+"home.daily" = "Tagesrätsel";
+"home.dailyHint" = "Jeden Tag neu, für alle gleich";
+"home.newPuzzle" = "Neues Rätsel";
+"home.variant" = "Variante";
+"home.difficulty" = "Schwierigkeit";
+"home.start" = "Losspielen";
+"home.resume" = "Weiterspielen";
+"home.language" = "Sprache";
+"home.languageSystem" = "Systemsprache";
+"app.loading" = "Katalog wird geladen …";
+"app.loadFailed" = "Start fehlgeschlagen";
+"app.retry" = "Erneut versuchen";
+"error.catalogMissing" = "Der Fragenkatalog wurde nicht gefunden. Zuerst catalogbuild laufen lassen.";
+"error.emptyCatalog" = "Der Fragenkatalog ist leer.";
+"error.notReady" = "Der Katalog ist noch nicht geladen.";

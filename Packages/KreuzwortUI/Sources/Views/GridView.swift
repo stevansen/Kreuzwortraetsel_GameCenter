@@ -117,14 +117,17 @@ public struct GridView: View {
     private func accessibilityLabel(for cell: Cell) -> String {
         let index = size.index(cell)
         let letter = session.progress.cells[index].letter
-        var parts = ["Zeile \(cell.row + 1), Spalte \(cell.col + 1)"]
-        parts.append(letter.map { "\(Alphabet.character($0))" } ?? "leer")
+        var parts = [Loc.string("grid.cell.position", cell.row + 1, cell.col + 1)]
+        parts.append(letter.map { String(Alphabet.character($0)) }
+            ?? Loc.string("grid.cell.empty"))
         if let entry = session.navigation.slot(at: cell, direction: session.caret.direction)
             .flatMap(session.navigation.entry) {
-            parts.append("Teil von: \(entry.clueText), \(entry.slot.direction.label), "
-                + "\(entry.slot.length) Buchstaben")
+            parts.append(Loc.string("grid.cell.partOf", entry.clueText,
+                                    entry.slot.direction.displayName, entry.slot.length))
         }
-        if session.flaggedCells.contains(index) { parts.append("als falsch markiert") }
+        if session.flaggedCells.contains(index) {
+            parts.append(Loc.string("grid.cell.flagged"))
+        }
         return parts.joined(separator: ", ")
     }
 }
@@ -215,8 +218,8 @@ struct ClueCellView: View {
             .padding(1)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(entries.isEmpty ? "leere Fragezelle"
-            : entries.map { "Frage: \($0.text), Pfeil \($0.arrow.rawValue)" }
+        .accessibilityLabel(entries.isEmpty ? Loc.string("grid.clueCell.empty")
+            : entries.map { Loc.string("grid.clueCell.clue", $0.text, $0.arrow.rawValue) }
                 .joined(separator: "; "))
     }
 

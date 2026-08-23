@@ -71,16 +71,46 @@ public struct ScoreBreakdown: Sendable, Hashable {
     /// Wurde der Zeitbonus wegen der Plausibilitätsgrenze gestrichen?
     public let timeBonusSuppressed: Bool
 
-    public var lines: [(label: String, value: String)] {
-        var out: [(String, String)] = [("Grundwert", "\(base)")]
-        out.append(("Gittergröße", "×" + fmt(sizeFactor, 2)))
-        out.append((timeBonusSuppressed ? "Zeit (Bonus gestrichen)" : "Zeit",
-                    "×" + fmt(timeMultiplier, 2)))
-        if cleanBonus > 1 { out.append(("Ohne Hilfe", "×" + fmt(cleanBonus, 2))) }
-        if streakMultiplier > 1 { out.append(("Serie", "×" + fmt(streakMultiplier, 2))) }
-        if dailyMultiplier > 1 { out.append(("Tagesrätsel", "×" + fmt(dailyMultiplier, 1))) }
-        if hintPenalty > 0 { out.append(("Hilfen", "−\(hintPenalty)")) }
-        out.append(("Punkte", "\(total)"))
+    /// Eine Zeile der Aufschlüsselung.
+    ///
+    /// Bewusst **ohne** Beschriftungstext: `PuzzleKit` importiert kein Foundation
+    /// und kann deshalb nicht lokalisieren. Anzeigetexte gehören in die
+    /// Oberflächenschicht — der Kern liefert die Struktur, `KreuzwortUI` die
+    /// Sprache. Vorher standen hier deutsche Literale, was die App auf Deutsch
+    /// festgenagelt hätte.
+    public struct Line: Sendable, Hashable {
+        public enum Kind: Sendable, Hashable {
+            case base
+            case size
+            case time
+            /// Zeit, aber der Bonus wurde wegen der Plausibilitätsgrenze gestrichen.
+            case timeWithoutBonus
+            case clean
+            case streak
+            case daily
+            case hints
+            case total
+        }
+
+        public let kind: Kind
+        /// Der Zahlenwert, sprachunabhängig formatiert.
+        public let value: String
+    }
+
+    public var lines: [Line] {
+        var out: [Line] = [Line(kind: .base, value: "\(base)")]
+        out.append(Line(kind: .size, value: "×" + fmt(sizeFactor, 2)))
+        out.append(Line(kind: timeBonusSuppressed ? .timeWithoutBonus : .time,
+                        value: "×" + fmt(timeMultiplier, 2)))
+        if cleanBonus > 1 { out.append(Line(kind: .clean, value: "×" + fmt(cleanBonus, 2))) }
+        if streakMultiplier > 1 {
+            out.append(Line(kind: .streak, value: "×" + fmt(streakMultiplier, 2)))
+        }
+        if dailyMultiplier > 1 {
+            out.append(Line(kind: .daily, value: "×" + fmt(dailyMultiplier, 1)))
+        }
+        if hintPenalty > 0 { out.append(Line(kind: .hints, value: "−\(hintPenalty)")) }
+        out.append(Line(kind: .total, value: "\(total)"))
         return out
     }
 }

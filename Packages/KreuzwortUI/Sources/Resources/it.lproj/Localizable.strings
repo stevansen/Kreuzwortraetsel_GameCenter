@@ -1,0 +1,72 @@
+/* Kreuzwort — testi dell'interfaccia, italiano.
+   I contenuti dei puzzle restano in tedesco: il catalogo delle definizioni
+   è costruito da fonti tedesche. */
+
+"variant.classic" = "Classico";
+"variant.arrow" = "Cruciverba con frecce";
+
+"difficulty.leicht" = "Facile";
+"difficulty.mittel" = "Medio";
+"difficulty.schwer" = "Difficile";
+"difficulty.experte" = "Esperto";
+
+"direction.across" = "orizzontale";
+"direction.down" = "verticale";
+
+"score.base" = "Valore base";
+"score.size" = "Dimensione griglia";
+"score.time" = "Tempo";
+"score.timeWithoutBonus" = "Tempo (bonus annullato)";
+"score.clean" = "Senza aiuti";
+"score.streak" = "Serie";
+"score.daily" = "Puzzle del giorno";
+"score.hints" = "Aiuti";
+"score.total" = "Punti";
+
+"clue.none" = "Nessuna definizione selezionata";
+"clue.previous" = "Definizione precedente";
+"clue.next" = "Definizione successiva";
+"clue.letters" = "%lld lettere";
+
+"cluelist.across" = "Orizzontali";
+"cluelist.down" = "Verticali";
+"cluelist.all" = "Definizioni";
+"cluelist.complete" = "completa";
+
+"grid.cell.position" = "Riga %lld, colonna %lld";
+"grid.cell.empty" = "vuota";
+"grid.cell.partOf" = "Parte di: %@, %@, %lld lettere";
+"grid.cell.flagged" = "segnalata come errata";
+"grid.clueCell.empty" = "casella definizione vuota";
+"grid.clueCell.clue" = "Definizione: %@, freccia %@";
+
+"action.questions" = "Definizioni";
+"action.revealLetter" = "Mostra lettera";
+"action.revealWord" = "Mostra parola";
+"action.check" = "Verifica";
+"action.pencilOn" = "Inserisci come incerto";
+"action.pencilOff" = "Inserisci come certo";
+
+"completion.title" = "Risolto";
+"completion.duration" = "Durata %lld min %lld s";
+"completion.next" = "Prossimo puzzle";
+
+"time.elapsed" = "Tempo di gioco %@";
+
+
+"home.title" = "Kreuzwort";
+"home.daily" = "Puzzle del giorno";
+"home.dailyHint" = "Nuovo ogni giorno, uguale per tutti";
+"home.newPuzzle" = "Nuovo puzzle";
+"home.variant" = "Variante";
+"home.difficulty" = "Difficoltà";
+"home.start" = "Gioca";
+"home.resume" = "Continua";
+"home.language" = "Lingua";
+"home.languageSystem" = "Lingua di sistema";
+"app.loading" = "Caricamento del catalogo …";
+"app.loadFailed" = "Avvio non riuscito";
+"app.retry" = "Riprova";
+"error.catalogMissing" = "Catalogo delle definizioni non trovato. Esegui prima catalogbuild.";
+"error.emptyCatalog" = "Il catalogo delle definizioni è vuoto.";
+"error.notReady" = "Il catalogo non è ancora stato caricato.";

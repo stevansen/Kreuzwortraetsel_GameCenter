@@ -53,6 +53,8 @@ func render(_ view: some View, size: CGSize, scheme: ColorScheme, to path: Strin
 @MainActor
 func run() throws {
     let args = Args(Array(CommandLine.arguments.dropFirst()))
+    // Sprache erzwingen, damit sich alle drei Fassungen ansehen lassen.
+    Loc.forcedLanguage = args.flags["lang"]
     let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let outDir = args.str("out", "build/shots")
     try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
@@ -83,7 +85,7 @@ func run() throws {
     let generator = Generator(layout: layout, index: index, clues: clues, widths: widths)
     let puzzle = try generator.generate(seed: args.uint64("seed", 1),
                                         difficulty: difficulty).puzzle
-    print("gerendert: \(puzzle.variant.label) \(puzzle.difficulty.label) "
+    print("gerendert: \(puzzle.variant.debugLabel) \(puzzle.difficulty.debugLabel) "
         + "\(puzzle.size.label), \(puzzle.entries.count) Wörter")
 
     // Drei Flächen, damit der Unterschied sichtbar ist: Schreibtisch mit
@@ -94,6 +96,7 @@ func run() throws {
         ("tv", .livingRoom, CGSize(width: 1000, height: 620)),
     ]
     let stem = "\(variant.rawValue)-\(difficulty.rawValue)"
+        + (args.flags["lang"].map { "-\($0)" } ?? "")
 
     for (name, caps, size) in surfaces {
         let session = PuzzleSession(puzzle: puzzle)

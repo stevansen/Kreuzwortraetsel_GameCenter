@@ -1,6 +1,6 @@
 # Kreuzwort
 
-Native Rätsel-App für iOS, iPadOS, macOS und tvOS mit **zwei Varianten** — klassisches
+Native Rätsel-App für iOS, iPadOS und macOS (tvOS vorbereitet) mit **zwei Varianten** — klassisches
 Kreuzworträtsel und Schwedenrätsel (Fragen im Gitter, Pfeile) —, prozeduraler
 Rätselerzeugung, Game Center und geräteübergreifendem Spielstand.
 
@@ -45,7 +45,7 @@ Packages/
     Fill/         PatternIndex (Bitsets) + varianten-agnostische CSP-Engine
   ClueCatalog/    SQLite, Normalisierung, QA, Assembler, Häufigkeiten
   GameServices/   GameKit-Facade                       (M7)
-  SyncKit/        CKSyncEngine, Merge-Logik            (M8)
+  SyncKit/        ProgressStore lokal; CKSyncEngine folgt   (M8)
 Tools/
   catalogbuild    Rohdaten → catalog.sqlite + Abdeckungsreport
   puzzlegen       Templatesuche, Generierung, ASCII-Vorschau, Diagnose
@@ -75,11 +75,48 @@ Das Ambiguitätsgatter läuft **zweimal**: auf der Langform und nach dem Kürzen
 Kürzen erzeugt Mehrdeutigkeit — „Hauptstadt von Frankreich" → „Stadt" sieht
 formal gültig aus und ist unbrauchbar.
 
+## Sprachen
+
+Die **Oberfläche** gibt es in Deutsch, Englisch und Italienisch
+(`Packages/KreuzwortUI/Sources/Resources/*.lproj`). Ein Test prüft, dass alle
+drei dieselben Schlüssel haben, keine leeren Werte enthalten und **dieselben
+Format-Platzhalter** verwenden — eine Übersetzung mit abweichender
+Platzhalterzahl stürzt zur Laufzeit ab, und zwar nur in dieser einen Sprache.
+
+Die **Rätsel** bleiben deutsch: der Fragenkatalog stammt aus deutschem
+Wiktionary, Wikidata und deutschen Korpora. Eine italienische oder englische
+Fassung der Rätsel wäre ein eigener Katalog — dieselbe Arbeit wie die
+Katalogpipeline noch einmal, pro Sprache. Für Südtirol ist „italienische
+Oberfläche, deutsche Rätsel" die naheliegende Kombination, und die App hat eine
+eigene Sprachwahl, weil Systemsprache und gewünschte Oberflächensprache dort
+regelmäßig auseinanderfallen.
+
+Anzeigetexte liegen deshalb **nicht** im Kern: `PuzzleKit` importiert kein
+Foundation und kann nicht lokalisieren. `ScoreBreakdown.lines` liefert Arten
+(`.base`, `.streak`, `.total`), nicht Texte; die Sprache kommt aus
+`KreuzwortUI`. Die alten Roh-Labels heißen `debugLabel` und sind nur für CLI und
+Debugging.
+
 ## Bauen
 
 ```bash
-swift build && swift test
+swift build && swift test                       # Bibliotheken und CLIs
+python3 scripts/make-xcodeproj.py               # Apps/Kreuzwort.xcodeproj erzeugen
+xcodebuild -project Apps/Kreuzwort.xcodeproj -scheme Kreuzwort \
+  -destination 'platform=macOS' build
 ```
+
+Das Xcode-Projekt ist **handgeschrieben** und wird von
+`scripts/make-xcodeproj.py` erzeugt — kein XcodeGen, kein Tuist, keine
+Abhängigkeit. Die UUIDs sind aus stabilen Namen abgeleitet, ein zweiter Lauf
+ergibt dieselbe Datei. Ein App-Target für iOS, iPadOS und macOS, das die
+Bibliotheken über `XCLocalSwiftPackageReference` aus diesem Verzeichnis zieht:
+`swift build` und Xcode sehen dieselben Quellen. Die App-Quellen unter
+`Apps/Kreuzwort/` tragen beide Build-Systeme.
+
+Der Katalog liegt als **Ordnerverweis** in der Resources-Phase, nicht als
+Einzeldateiverweis — er ist ein generiertes 43-MB-Artefakt und nicht im Git; ein
+Dateiverweis würde den Build brechen, sobald er fehlt.
 
 Der Katalog ist ein generiertes Artefakt und liegt nicht im Repo. Neu erzeugen:
 
@@ -132,8 +169,8 @@ Menüs.
 | M2 Katalogpipeline, drei Quellen, Abdeckungsreport | ✅ |
 | M3 Füll-Engine, `classic`-Generator (alle vier Stufen), CLI | ✅ |
 | M4 `ArrowLayout` (Schwedenrätsel), alle vier Stufen | ✅ |
-| M5 Spielansicht, beide Varianten, Scoring, Eingabe | teilweise — Logik und Ansicht ja, Persistenz und Startbildschirm offen |
-| M6 App-Targets für iOS/iPadOS | offen |
+| M5 Spielansicht, Scoring, Eingabe, Persistenz, Startbildschirm | ✅ |
+| M6 Xcode-Projekt für iOS/iPadOS/macOS, Lokalisierung de/en/it | ✅ |
 | M7 Game Center · M8 CloudKit + Handoff + Widgets | offen |
 | M9 tvOS · M10 Barrierefreiheit, Lokalisierung | offen |
 

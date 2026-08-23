@@ -6,6 +6,10 @@ let strict: [SwiftSetting] = []
 
 let package = Package(
     name: "KreuzwortCore",
+    // Erforderlich, sobald ein Target lokalisierte Ressourcen hat. Deutsch ist
+    // die Rückfallsprache, weil der Rätselinhalt deutsch ist — die Oberfläche
+    // gibt es in de, en und it.
+    defaultLocalization: "de",
     platforms: [.iOS(.v18), .macOS(.v15), .tvOS(.v18)],
     products: [
         .library(name: "PuzzleKit", targets: ["PuzzleKit"]),
@@ -52,6 +56,8 @@ let package = Package(
                 path: "Packages/GameServices/Sources", swiftSettings: strict),
         .target(name: "SyncKit", dependencies: ["PuzzleKit"],
                 path: "Packages/SyncKit/Sources", swiftSettings: strict),
+        .testTarget(name: "SyncKitTests", dependencies: ["SyncKit", "PuzzleKit"],
+                    path: "Packages/SyncKit/Tests", swiftSettings: strict),
 
         // MARK: - Geteilte Oberfläche
         //
@@ -59,7 +65,9 @@ let package = Package(
         // Plattformverzweigung: `SurfaceCapabilities` wird von den App-Targets
         // hereingegeben. Ein Test scannt dieses Verzeichnis auf `#if os(`.
         .target(name: "KreuzwortUI", dependencies: ["PuzzleKit"],
-                path: "Packages/KreuzwortUI/Sources", swiftSettings: strict),
+                path: "Packages/KreuzwortUI/Sources",
+                resources: [.process("Resources")],
+                swiftSettings: strict),
         .testTarget(name: "KreuzwortUITests", dependencies: ["KreuzwortUI", "PuzzleKit"],
                     path: "Packages/KreuzwortUI/Tests", swiftSettings: strict),
 
@@ -69,9 +77,11 @@ let package = Package(
         // macOS-Host für die geteilte Oberfläche. Die Plattformerkennung sitzt
         // hier und nicht in KreuzwortUI: das App-Target ist der einzige Ort, an
         // dem `#if os(...)` seinen Platz hat.
+        // Dieselben Quellen tragen die Xcode-App (Apps/Kreuzwort.xcodeproj) und
+        // diesen SwiftPM-Host. Eine Wahrheit, zwei Build-Systeme.
         .executableTarget(name: "KreuzwortMac",
-                          dependencies: ["KreuzwortUI", "PuzzleKit", "ClueCatalog"],
-                          path: "Apps/KreuzwortMac", swiftSettings: strict),
+                          dependencies: ["KreuzwortUI", "PuzzleKit", "ClueCatalog", "SyncKit"],
+                          path: "Apps/Kreuzwort", swiftSettings: strict),
 
         .executableTarget(name: "puzzlegen", dependencies: ["PuzzleKit", "ClueCatalog"],
                           path: "Tools/puzzlegen", swiftSettings: strict),

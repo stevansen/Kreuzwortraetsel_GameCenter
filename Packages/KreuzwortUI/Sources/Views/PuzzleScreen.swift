@@ -79,11 +79,12 @@ public struct PuzzleScreen: View {
 
     private var header: some View {
         HStack {
-            Text("\(session.puzzle.variant.label) · \(session.puzzle.difficulty.label)")
+            Text("\(session.puzzle.variant.displayName) · "
+                + session.puzzle.difficulty.displayName)
                 .font(.headline)
             Spacer()
             Text(timeText).monospacedDigit().foregroundStyle(.secondary)
-                .accessibilityLabel("Spielzeit \(timeText)")
+                .accessibilityLabel(Loc.string("time.elapsed", timeText))
         }
     }
 
@@ -99,28 +100,28 @@ public struct PuzzleScreen: View {
         HStack(spacing: 10) {
             if !capabilities.hasPointer {
                 Button { showsClueList = true } label: {
-                    Label("Fragen", systemImage: "list.bullet")
+                    Label { Text(loc: "action.questions") } icon: { Image(systemName: "list.bullet") }
                 }
             }
             Spacer(minLength: 4)
             if session.canRevealLetter {
                 Button { session.revealLetter() } label: {
-                    Label("Buchstabe zeigen", systemImage: "character.magnify")
+                    Label { Text(loc: "action.revealLetter") } icon: { Image(systemName: "character.magnify") }
                 }
             }
             if session.canRevealWord {
                 Button { session.revealWord() } label: {
-                    Label("Wort zeigen", systemImage: "text.magnifyingglass")
+                    Label { Text(loc: "action.revealWord") } icon: { Image(systemName: "text.magnifyingglass") }
                 }
             }
             if session.canCheckGrid {
                 Button { _ = session.checkGrid() } label: {
-                    Label("Prüfen", systemImage: "checkmark.circle")
+                    Label { Text(loc: "action.check") } icon: { Image(systemName: "checkmark.circle") }
                 }
             }
             Button { session.apply(.togglePencil) } label: {
-                Label(isPencil ? "Sicher eintragen" : "Unsicher eintragen",
-                      systemImage: isPencil ? "pencil.slash" : "pencil")
+                Label { Text(loc: isPencil ? "action.pencilOff" : "action.pencilOn") }
+                    icon: { Image(systemName: isPencil ? "pencil.slash" : "pencil") }
             }
         }
         .buttonStyle(.bordered)

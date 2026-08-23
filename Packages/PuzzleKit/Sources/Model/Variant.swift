@@ -4,7 +4,10 @@ public enum PuzzleVariant: String, Codable, Sendable, CaseIterable {
     /// Schwedenrätsel: Fragen stehen in Zellen im Gitter, Pfeile zeigen die Laufrichtung.
     case arrow
 
-    public var label: String {
+    /// Nur für CLI-Ausgabe und Debugging. Für die Oberfläche gibt es die
+    /// lokalisierte Fassung in `KreuzwortUI` — `PuzzleKit` kann ohne Foundation
+    /// nicht lokalisieren.
+    public var debugLabel: String {
         self == .classic ? "Klassisch" : "Schwedenrätsel"
     }
 }
@@ -12,7 +15,8 @@ public enum PuzzleVariant: String, Codable, Sendable, CaseIterable {
 public enum Difficulty: String, Codable, Sendable, CaseIterable {
     case leicht, mittel, schwer, experte
 
-    public var label: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+    /// Nur für CLI-Ausgabe und Debugging, siehe `PuzzleVariant.debugLabel`.
+    public var debugLabel: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
     public var basePoints: Int {
         switch self {
         case .leicht: 100

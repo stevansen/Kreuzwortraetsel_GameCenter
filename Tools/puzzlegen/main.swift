@@ -201,7 +201,7 @@ func cmdGen(_ args: Args) {
                     if let s = topo.slots.first(where: { $0.id == id }) {
                         let cands = ctx.index.mask(length: s.length,
                                                    filter: filters[topo.slots.firstIndex(of: s)!])
-                        print("  Slot \(id) Länge \(s.length) \(s.direction.label) "
+                        print("  Slot \(id) Länge \(s.length) \(s.direction.debugLabel) "
                             + "bei (\(s.start.row),\(s.start.col)) · \(hits)× blockiert · "
                             + "\(cands.count) Startkandidaten")
                     }
@@ -243,7 +243,7 @@ func cmdSweep(_ args: Args) {
         let layout: any LayoutProvider = variant == .classic
             ? ClassicLayout(templates: ctx.templates) : ArrowLayout()
         let gen = Generator(layout: layout, index: ctx.index, clues: ctx.clues, widths: ctx.widths)
-        print("\n== \(variant.label) ==")
+        print("\n== \(variant.debugLabel) ==")
         for difficulty in Difficulty.allCases {
             var ok = 0, firstTry = 0, nodes = 0, words = 0, shortClues = 0
             var reasons: [String: Int] = [:]
@@ -267,7 +267,7 @@ func cmdSweep(_ args: Args) {
             }
             let secs = Date().timeIntervalSince(t0)
             let rate = Double(ok) / Double(seeds)
-            print("  \(difficulty.label.padding(toLength: 8, withPad: " ", startingAt: 0))"
+            print("  \(difficulty.debugLabel.padding(toLength: 8, withPad: " ", startingAt: 0))"
                 + "Erfolg \(pct(rate))  erster Versuch \(pct(Double(firstTry) / Double(seeds)))"
                 + "  ø Wörter \(ok > 0 ? words / ok : 0)"
                 + "  ø Kurzfragen \(ok > 0 ? shortClues / ok : 0)"
@@ -300,7 +300,7 @@ func cmdDiag(_ args: Args) {
     let filters = gen.slotFilters(topology: topo, profile: profile)
     let engine = FillEngine(index: ctx.index, topology: topo, profile: profile, slotFilters: filters)
 
-    print("\n\(variant.label) \(difficulty.label) \(size.label) · \(topo.slots.count) Slots · "
+    print("\n\(variant.debugLabel) \(difficulty.debugLabel) \(size.label) · \(topo.slots.count) Slots · "
         + "Zipf >= \(fmt(profile.minZipf, 1)) · Tier \(profile.clueTiers.lowerBound)–"
         + "\(profile.clueTiers.upperBound) · Wortlänge \(profile.wordLength.lowerBound)–"
         + "\(profile.wordLength.upperBound)")
@@ -326,7 +326,7 @@ func cmdDiag(_ args: Args) {
     let diag = engine.diagnose().sorted { $0.candidates < $1.candidates }
     print("\nengste Slots:")
     for d in diag.prefix(12) {
-        print("  Länge \(d.slot.length) \(d.slot.direction.label) bei "
+        print("  Länge \(d.slot.length) \(d.slot.direction.debugLabel) bei "
             + "(\(d.slot.start.row),\(d.slot.start.col)) · \(d.candidates) Kandidaten "
             + "· \(d.crossings) Kreuzungen")
     }
@@ -353,7 +353,7 @@ func cmdArrowDiag(_ args: Args) {
     let size = profile.sizes[0]
     let (kinds, score) = layout.bestEffortPlacement(size: size, profile: profile, rng: &rng)
 
-    print("Schwedenrätsel \(difficulty.label) \(size.label)")
+    print("Schwedenrätsel \(difficulty.debugLabel) \(size.label)")
     print("Fragezellen \(fmt(profile.deadCellRatio.lowerBound, 2))–"
         + "\(fmt(profile.deadCellRatio.upperBound, 2)) · Kreuzung "
         + "\(fmt(profile.crossRatio.lowerBound, 2))–\(fmt(profile.crossRatio.upperBound, 2)) · "

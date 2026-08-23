@@ -23,7 +23,7 @@ public struct ClueBarView: View {
     public var body: some View {
         HStack(spacing: 12) {
             Button(action: onPrevious) { Image(systemName: "chevron.left") }
-                .accessibilityLabel("Vorige Frage")
+                .accessibilityLabel(Loc.string("clue.previous"))
             VStack(alignment: .leading, spacing: 2) {
                 if let entry = session.activeEntry {
                     Text(heading(for: entry))
@@ -34,12 +34,12 @@ public struct ClueBarView: View {
                         .lineLimit(3)
                         .minimumScaleFactor(0.8)
                 } else {
-                    Text("Keine Frage ausgewählt").font(.headline)
+                    Text(loc: "clue.none").font(.headline)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onNext) { Image(systemName: "chevron.right") }
-                .accessibilityLabel("Nächste Frage")
+                .accessibilityLabel(Loc.string("clue.next"))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -48,9 +48,12 @@ public struct ClueBarView: View {
 
     private func heading(for entry: Entry) -> String {
         var parts: [String] = []
-        if let n = entry.number { parts.append("\(n) \(entry.slot.direction.label)") }
-        else if let a = entry.arrow { parts.append("\(a.glyph) \(a.runDirection.label)") }
-        parts.append("\(entry.slot.length) Buchstaben")
+        if let n = entry.number {
+            parts.append("\(n) \(entry.slot.direction.displayName)")
+        } else if let a = entry.arrow {
+            parts.append("\(a.glyph) \(a.runDirection.displayName)")
+        }
+        parts.append(Loc.string("clue.letters", entry.slot.length))
         return parts.joined(separator: " · ")
     }
 }
@@ -78,10 +81,10 @@ public struct ClueListContent: View {
         // Klassisch nach Richtung gruppieren, Schwedenrätsel als eine Liste:
         // dort gibt es keine Nummerierung, an der man sich orientieren könnte.
         guard entries.contains(where: { $0.number != nil }) else {
-            return [("Fragen", entries)]
+            return [(Loc.string("cluelist.all"), entries)]
         }
-        return [("Waagrecht", entries.filter { $0.slot.direction == .across }),
-                ("Senkrecht", entries.filter { $0.slot.direction == .down })]
+        return [(Loc.string("cluelist.across"), entries.filter { $0.slot.direction == .across }),
+                (Loc.string("cluelist.down"), entries.filter { $0.slot.direction == .down })]
     }
 
     public var body: some View {
@@ -118,7 +121,7 @@ public struct ClueListContent: View {
                     Image(systemName: "checkmark")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel("vollständig")
+                        .accessibilityLabel(Loc.string("cluelist.complete"))
                 }
             }
             .padding(.horizontal, 12)
@@ -172,21 +175,21 @@ public struct CompletionView: View {
 
     public var body: some View {
         VStack(spacing: 18) {
-            Text("Gelöst").font(.largeTitle.bold())
-            Text("\(session.puzzle.variant.label) · \(session.puzzle.difficulty.label) · "
-                + session.puzzle.size.label)
+            Text(loc: "completion.title").font(.largeTitle.bold())
+            Text("\(session.puzzle.variant.displayName) · "
+                + "\(session.puzzle.difficulty.displayName) · \(session.puzzle.size.label)")
                 .font(.subheadline).foregroundStyle(.secondary)
 
             if let breakdown = session.breakdown {
                 VStack(spacing: 6) {
-                    ForEach(Array(breakdown.lines.enumerated()), id: \.offset) { i, line in
+                    ForEach(Array(breakdown.lines.enumerated()), id: \.offset) { _, line in
                         HStack {
-                            Text(line.label)
+                            Text(line.kind.displayName)
                             Spacer(minLength: 20)
                             Text(line.value).monospacedDigit()
                         }
-                        .font(i == breakdown.lines.count - 1 ? .headline : .callout)
-                        .foregroundStyle(i == breakdown.lines.count - 1
+                        .font(line.kind.isTotal ? .headline : .callout)
+                        .foregroundStyle(line.kind.isTotal
                             ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                     }
                 }
@@ -196,13 +199,14 @@ public struct CompletionView: View {
             }
 
             Text(durationText).font(.callout).foregroundStyle(.secondary)
-            Button("Nächstes Rätsel", action: onNext).buttonStyle(.borderedProminent)
+            Button(action: onNext) { Text(loc: "completion.next") }
+                .buttonStyle(.borderedProminent)
         }
         .padding(24)
     }
 
     private var durationText: String {
         let total = Int(session.elapsedSeconds.rounded())
-        return "Dauer \(total / 60) min \(total % 60) s"
+        return Loc.string("completion.duration", total / 60, total % 60)
     }
 }
