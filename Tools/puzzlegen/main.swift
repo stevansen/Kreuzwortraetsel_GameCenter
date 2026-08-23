@@ -127,6 +127,10 @@ struct GenContext {
     let clues: CatalogClueSource
     let widths: GlyphWidthTable
     let templates: [GridTemplate]
+    /// Beide Versionen gehören in die geprüfte Seed-Liste: ein Seed, der gegen
+    /// einen anderen Katalog geprüft wurde, sagt nichts.
+    let catalogVersion: Int
+    let generatorVersion: Int
 }
 
 func makeContext(_ args: Args) -> GenContext {
@@ -153,7 +157,9 @@ func makeContext(_ args: Args) -> GenContext {
                       clues: CatalogClueSource(reader: reader,
                                                widths: loadWidths(args.string("widths", "Resources/glyphwidths.json"))),
                       widths: loadWidths(args.string("widths", "Resources/glyphwidths.json")),
-                      templates: templates)
+                      templates: templates,
+                      catalogVersion: reader.catalogVersion,
+                      generatorVersion: Generator.currentVersion)
 }
 
 func cmdGen(_ args: Args) {
@@ -227,6 +233,97 @@ func cmdGen(_ args: Args) {
 
 func profile2(_ v: PuzzleVariant, _ d: Difficulty) -> DifficultyProfile {
     DifficultyProfile.profile(v, d)
+}
+
+// MARK: - verify
+
+/// Sucht **erzeugbare** Seeds und schreibt sie als Ressource.
+///
+/// Warum zur Bauzeit: die harten Stufen brauchen Sekunden bis Minuten, und der
+/// Fehlschlag ist der teuerste Fall (classic/experte verbrennt 2,5 Mio. Knoten in
+/// rund 8 Minuten, bevor er aufgibt). Auf einem Telefon ist das nicht zumutbar,
+/// und beim Tagesrätsel — dessen Seed das Datum ist — wäre es an manchen Tagen
+/// gar kein Rätsel. Hier wird einmal gesucht und das Ergebnis ausgeliefert.
+///
+/// Nach **jedem** Erfolg wird geschrieben. Ein Durchlauf über alle acht
+/// Kombinationen dauert Stunden; ein Abbruch darf nicht alles verlieren, und ein
+/// erneuter Aufruf setzt auf der vorhandenen Datei auf.
+func cmdVerify(_ args: Args) {
+    let ctx = makeContext(args)
+    let outPath = args.string("out", "Resources/seeds.txt")
+    let target = args.int("target", 24)
+    let maxSeconds = Double(args.int("max-seconds", 900))
+    let maxSeed = args.uint64("max-seed", 4000)
+    let onlyVariant = args.flags["variant"]
+    let onlyDifficulty = args.flags["difficulty"]
+
+    // Vorhandene Datei weiterführen, wenn die Versionen passen.
+    var table: [String: [UInt64]] = [:]
+    let catalogVersion = ctx.catalogVersion
+    let generatorVersion = ctx.generatorVersion
+    if let existing = try? String(contentsOfFile: outPath, encoding: .utf8),
+       let parsed = try? VerifiedSeeds.parse(existing),
+       parsed.catalogVersion == catalogVersion,
+       parsed.generatorVersion == generatorVersion {
+        for v in PuzzleVariant.allCases {
+            for d in Difficulty.allCases {
+                let list = parsed.seeds(v, d)
+                if !list.isEmpty { table["\(v.rawValue)|\(d.rawValue)"] = list }
+            }
+        }
+        print("vorhandene Liste übernommen: \(parsed.count) Seeds")
+    }
+
+    func write() {
+        let seeds = VerifiedSeeds(generatorVersion: generatorVersion,
+                                  catalogVersion: catalogVersion, table: table)
+        try? seeds.serialized().write(toFile: outPath, atomically: true, encoding: .utf8)
+    }
+
+    for variantName in PuzzleVariant.allCases where onlyVariant == nil
+        || onlyVariant == variantName.rawValue
+    {
+        let layout: any LayoutProvider = variantName == .classic
+            ? ClassicLayout(templates: ctx.templates) : ArrowLayout()
+        let gen = Generator(layout: layout, index: ctx.index, clues: ctx.clues,
+                            widths: ctx.widths)
+        for difficulty in Difficulty.allCases where onlyDifficulty == nil
+            || onlyDifficulty == difficulty.rawValue
+        {
+            let key = "\(variantName.rawValue)|\(difficulty.rawValue)"
+            var found = table[key] ?? []
+            let already = found.count
+            var tried = 0, failed = 0
+            let t0 = Date()
+            var seed: UInt64 = 1
+            while found.count < target, seed <= maxSeed,
+                  Date().timeIntervalSince(t0) < maxSeconds {
+                defer { seed += 1 }
+                if found.contains(seed) { continue }
+                tried += 1
+                do {
+                    _ = try gen.generate(seed: seed, difficulty: difficulty)
+                    found.append(seed)
+                    table[key] = found
+                    write()
+                } catch {
+                    failed += 1
+                }
+            }
+            let secs = Date().timeIntervalSince(t0)
+            let newly = found.count - already
+            print("  \(variantName.rawValue)/\(difficulty.rawValue): "
+                + "\(found.count) Seeds (\(newly) neu, \(failed) Fehlschläge, "
+                + "\(fmt(secs, 1)) s)"
+                + (found.count < target ? "  ⚠︎ Ziel \(target) nicht erreicht" : ""))
+        }
+    }
+
+    let seeds = VerifiedSeeds(generatorVersion: generatorVersion,
+                              catalogVersion: catalogVersion, table: table)
+    write()
+    print("geschrieben: \(seeds.count) Seeds → \(outPath)"
+        + (seeds.isComplete ? "" : "  ⚠︎ unvollständig, mindestens eine Kombination leer"))
 }
 
 // MARK: - sweep
@@ -385,6 +482,8 @@ guard let sub = argv.first else {
 
       templates   Sucht gültige classic-Schwarzfeldmuster und schreibt sie nach
                   Resources/grids/classic/. Flags: --count --seed --out --root
+      verify      Sucht erzeugbare Seeds und schreibt Resources/seeds.txt.
+                  Flags: --target --max-seconds --max-seed --variant --difficulty --out
       sweep       Robustheitstest über viele Seeds. Flags: --seeds --variant
       gen         Generiert ein Rätsel und zeigt es als ASCII.
                   Flags: --variant --difficulty --seed --catalog --clues
@@ -397,6 +496,7 @@ case "templates": cmdTemplates(args)
 case "gen": cmdGen(args)
 case "diag": cmdDiag(args)
 case "sweep": cmdSweep(args)
+case "verify": cmdVerify(args)
 case "arrowdiag": cmdArrowDiag(args)
 default: die("unbekannter Befehl: \(sub)")
 }

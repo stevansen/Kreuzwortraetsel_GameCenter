@@ -17,7 +17,8 @@
 		89E97945358667E4C83070FE /* KreuzwortUI in Frameworks */ = {isa = PBXBuildFile; productRef = DC83A211F60CEC7F3C823B72 /* KreuzwortUI */; };
 		A408D54658691A50A2C17689 /* SyncKit in Frameworks */ = {isa = PBXBuildFile; productRef = D274AE930DEDAB6C390EEAE6 /* SyncKit */; };
 		02EA44CE106FD9CDBC341EA4 /* GameServices in Frameworks */ = {isa = PBXBuildFile; productRef = F6A68C5891116F6767339B87 /* GameServices */; };
-		6C1534DA43165C774C883664 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 4C72359361FE565684D4CF86 /* Resources */; };
+		9C1B7E3CA2C50FB6B9DA9182 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86BE5228102BBE430BCEEA46 /* Assets.xcassets */; };
+		8EF5C3FA2B78C4F03E264604 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,8 +28,9 @@
 		5420869B93AA8C8198B23B2E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KreuzwortApp.swift; sourceTree = "<group>"; };
 		1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformSurface.swift; sourceTree = "<group>"; };
-		4C72359361FE565684D4CF86 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = ../Resources; sourceTree = "<group>"; };
 		68E77A9D7BC78A97D4F4E27B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		86BE5228102BBE430BCEEA46 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Kreuzwort/Assets.xcassets; sourceTree = "<group>"; };
+		55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Kreuzwort/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,7 +53,8 @@
 			isa = PBXGroup;
 			children = (
 				69F8D45498D7E20DA99BB780 /* Kreuzwort */,
-				4C72359361FE565684D4CF86 /* Resources */,
+				86BE5228102BBE430BCEEA46 /* Assets.xcassets */,
+				55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */,
 				328EC33DF3954DC9B83FA285 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -87,6 +90,7 @@
 				4E57AE888889001C06A4F7E8 /* Sources */,
 				69BE8A4D8E4D9DA4E7DB3928 /* Frameworks */,
 				D6C9E8A172005E68A1DD674F /* Resources */,
+				7210AB09068A8AFD1D5FDDEA /* Daten kopieren */,
 			);
 			buildRules = (
 			);
@@ -143,12 +147,31 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		7210AB09068A8AFD1D5FDDEA /* Daten kopieren */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Daten kopieren";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nSRC=\"$SRCROOT/../Resources\"\nDST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Data\"\nrm -rf \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Resources\"\nif [ -d \"$SRC\" ]; then\n  rm -rf \"$DST\"\n  mkdir -p \"$DST\"\n  rsync -a --exclude .DS_Store \"$SRC/\" \"$DST/\"\nelse\n  echo \"warning: $SRC fehlt - die App startet ohne Katalog\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXResourcesBuildPhase section */
 		D6C9E8A172005E68A1DD674F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6C1534DA43165C774C883664 /* Resources in Resources */,
+				9C1B7E3CA2C50FB6B9DA9182 /* Assets.xcassets in Resources */,
+				8EF5C3FA2B78C4F03E264604 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -219,9 +242,14 @@
 		7082CC0B6FC1282FCEABD07A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Kreuzwort/Kreuzwort.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Kreuzwort/Kreuzwort.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Kreuzwort/Kreuzwort-macOS.entitlements;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JF8N3J347R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Kreuzwort/Info.plist;
@@ -232,9 +260,10 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../Frameworks";
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -244,9 +273,14 @@
 		639A7CA24D39909E713B47F7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Kreuzwort/Kreuzwort.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Kreuzwort/Kreuzwort.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Kreuzwort/Kreuzwort-macOS.entitlements;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = JF8N3J347R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Kreuzwort/Info.plist;
@@ -257,9 +291,10 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../Frameworks";
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

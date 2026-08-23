@@ -37,6 +37,9 @@ final class AppEnvironment {
     private var index: PatternIndex?
     private var clues: CatalogClueSource?
     private var templates: [GridTemplate] = []
+    /// Zur Bauzeit geprüfte Seeds. `nil`, wenn die Datei fehlt oder zu einem
+    /// anderen Katalog gehört — dann wird blind gewählt wie vorher.
+    private var verifiedSeeds: VerifiedSeeds?
     private var widths: GlyphWidthTable = .bootstrap
     private(set) var store: ProgressStore?
     private var profileStore: ProfileStore?
@@ -67,6 +70,9 @@ final class AppEnvironment {
             index = PatternIndex(lexicon: lexicon)
             clues = CatalogClueSource(reader: reader, widths: widths)
             templates = Self.loadTemplates(in: resources.appendingPathComponent("grids/classic"))
+            verifiedSeeds = Self.loadVerifiedSeeds(
+                at: resources.appendingPathComponent("seeds.txt"),
+                catalogVersion: reader.catalogVersion)
             resumable = store.mostRecentUnfinished()
 
             let profileStore = try ProfileStore()
@@ -80,11 +86,22 @@ final class AppEnvironment {
                 outbox: try SubmissionOutbox(),
                 deviceID: store.deviceID)
             self.coordinator = coordinator
-            // Sync: CloudKit wenn ein Konto und ein Container da sind, sonst der
-            // ausdrückliche Rückfall. Ohne ihn wäre die App in der Entwicklung
-            // nicht startbar — CloudKit braucht ein bezahltes Konto.
-            let backend: any SyncBackend = (try? CloudKitSyncBackend())
-                ?? LocalOnlySyncBackend()
+            // Sync: CloudKit nur, wenn der Build das iCloud-Entitlement hat.
+            //
+            // Das `try?` hier war ein Trugschluss und hat die App im Simulator
+            // beim Start abgeschossen: `CKContainer(identifier:)` **trappt**,
+            // wenn das Entitlement fehlt — das ist kein Fehler, den `try?`
+            // auffangen kann, sondern ein Absturz mitten in
+            // `AppEnvironment.load()`. Getroffen hätte es jeden Build ohne
+            // iCloud-Berechtigung, also auch den, der jetzt in den Store geht.
+            //
+            // Der Schalter ist eine Bauzeit-Tatsache und wird zusammen mit dem
+            // Entitlement gesetzt (siehe Kreuzwort.entitlements und
+            // scripts/make-xcodeproj.py), damit beides nicht auseinanderläuft.
+            var backend: any SyncBackend = LocalOnlySyncBackend()
+            #if KREUZWORT_CLOUDKIT
+            if let cloud = try? CloudKitSyncBackend() { backend = cloud }
+            #endif
             let sync = SyncCoordinator(backend: backend, progressStore: store,
                                        profileStore: profileStore,
                                        deviceID: store.deviceID)
@@ -113,9 +130,15 @@ final class AppEnvironment {
     /// dem Projektverzeichnis — auch daneben; deshalb beide Orte versuchen,
     /// statt mit einer nichtssagenden Meldung zu scheitern.
     private static func resourceRoot() throws -> URL {
-        // Im App-Bundle: entweder direkt in Resources/ oder — bei einem
-        // Ordnerverweis im Xcode-Projekt — eine Ebene tiefer.
-        for subdirectory in [nil, "Resources"] as [String?] {
+        // Im App-Bundle liegen die Daten unter **Data**, nicht unter Resources.
+        // Der Name ist kein Geschmacksurteil: ein Ordner „Resources" im
+        // iOS-Bundle bringt codesign dazu, die Dateien in der Bundle-Wurzel für
+        // eigenständigen Code zu halten, und der signierte Build scheitert mit
+        // „code object is not signed at all". Siehe scripts/make-xcodeproj.py.
+        //
+        // „Resources" bleibt in der Liste, weil beim Start aus dem
+        // Projektverzeichnis genau dieser Ordner daneben liegt.
+        for subdirectory in [nil, "Data", "Resources"] as [String?] {
             if let bundled = Bundle.main.url(forResource: "catalog", withExtension: "sqlite",
                                              subdirectory: subdirectory) {
                 return bundled.deletingLastPathComponent()
@@ -132,6 +155,22 @@ final class AppEnvironment {
         throw AppError.catalogMissing
     }
 
+    /// Die geprüfte Seed-Liste, oder `nil`.
+    ///
+    /// Streng bei der Version: ein Seed, der gegen einen anderen Katalog geprüft
+    /// wurde, sagt nichts über diesen. Und streng bei der Vollständigkeit — eine
+    /// Liste, in der eine Kombination fehlt, würde genau dort still auf blindes
+    /// Wählen zurückfallen, und das wäre schwer zu finden.
+    private static func loadVerifiedSeeds(at url: URL, catalogVersion: Int) -> VerifiedSeeds? {
+        guard let text = try? String(contentsOf: url, encoding: .utf8),
+              let parsed = try? VerifiedSeeds.parse(text),
+              parsed.catalogVersion == catalogVersion,
+              parsed.generatorVersion == Generator.currentVersion,
+              parsed.isComplete
+        else { return nil }
+        return parsed
+    }
+
     private static func loadTemplates(in directory: URL) -> [GridTemplate] {
         var out: [GridTemplate] = []
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
@@ -146,19 +185,34 @@ final class AppEnvironment {
 
     // MARK: - Rätsel
 
-    /// Ein neues Rätsel. Der Seed kommt aus der Uhr, damit aufeinanderfolgende
-    /// Aufrufe verschiedene Rätsel liefern — die **Erzeugung** bleibt
-    /// deterministisch, nur die Wahl des Seeds ist es nicht.
+    /// Ein neues Rätsel. Die Uhr wählt weiterhin, aber nur den **Index** in die
+    /// geprüfte Liste — damit bleibt die Wahl beliebig und das Ergebnis
+    /// erzeugbar. Ohne Liste wie früher direkt aus der Uhr.
     func newPuzzle() throws -> Puzzle {
-        try puzzle(seed: UInt64(Date().timeIntervalSince1970 * 1000) & 0xFFFF_FFFF)
+        let pick = UInt64(Date().timeIntervalSince1970 * 1000) & 0xFFFF_FFFF
+        if let seed = verifiedSeeds?.seed(variant: variant, difficulty: difficulty,
+                                          pick: pick) {
+            return try puzzle(seed: seed)
+        }
+        return try puzzle(seed: pick)
     }
 
-    /// Das Tagesrätsel: serverlos, weltweit identisch.
+    /// Das Tagesrätsel: serverlos, weltweit identisch — und erzeugbar.
+    ///
+    /// Der Seed des Tages war vorher der Hash des Datums selbst. Das war an den
+    /// Tagen wertlos, an denen dieser Seed nicht füllbar ist: kein Rätsel, oder
+    /// Minuten Wartezeit bis zum Fehlschlag. Jetzt indiziert derselbe Hash die
+    /// geprüfte Liste. Das Tagesrätsel bleibt eine Funktion des Datums allein.
     func dailyPuzzle() throws -> Puzzle {
         let date = ISO8601DateFormatter()
         date.formatOptions = [.withFullDate]
-        return try puzzle(seed: Puzzle.dailySeed(isoDate: date.string(from: Date()),
-                                                 variant: variant, difficulty: difficulty))
+        let iso = date.string(from: Date())
+        if let seed = verifiedSeeds?.dailySeed(isoDate: iso, variant: variant,
+                                               difficulty: difficulty) {
+            return try puzzle(seed: seed)
+        }
+        return try puzzle(seed: Puzzle.dailySeed(isoDate: iso, variant: variant,
+                                                 difficulty: difficulty))
     }
 
     func puzzle(seed: UInt64) throws -> Puzzle {

@@ -206,7 +206,14 @@ python3 scripts/harvest_wiktionary.py     # 267-MB-Dump, ~4 min
 python3 scripts/harvest_leipzig.py --archives raw/leipzig/*.tar.gz
 python3 scripts/harvest_wikipedia.py      # gedrosselt, gecheckpointet, wiederaufnehmbar
 swift run -c release catalogbuild build
+swift run -c release puzzlegen verify                   # geprüfte Seeds, Pflicht
 ```
+
+Der letzte Schritt ist **Pflicht, nicht optional**: `Resources/seeds.txt` gilt nur
+für die Katalog- und Generatorversion, gegen die sie geprüft wurde. Nach einem
+Katalog-Neubau ist die alte Liste ungültig, die App fällt dann auf blindes
+Seed-Wählen zurück, und `ShippedSeedsTests` macht es beim Testen sichtbar statt
+im Feld.
 
 Die Downloads stehen in den Skriptköpfen. Wikimedia drosselt anonyme Clients
 hart; der Wikipedia-Harvester hat deshalb Backoff und einen Cache und kann
@@ -219,7 +226,14 @@ swift run -c release puzzlegen templates --count 24     # Schwarzfeldmuster such
 swift run -c release puzzlegen gen --difficulty schwer --seed 1
 swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slot
 swift run -c release puzzlegen sweep --seeds 100        # Erfolgsquote messen
+swift run -c release puzzlegen verify --target 24       # erzeugbare Seeds suchen
 ```
+
+`verify` schreibt nach **jedem** Erfolg. Ein vollständiger Durchlauf dauert
+Stunden, weil ein Fehlschlag bei classic/experte rund 8 Minuten kostet; ein
+Abbruch darf davon nichts verlieren, und ein erneuter Aufruf setzt auf der
+vorhandenen Datei auf. Flags: `--target` (Seeds je Kombination), `--max-seconds`
+(Deckel je Kombination), `--max-seed`, `--variant`, `--difficulty`.
 
 ## Oberfläche ansehen
 

@@ -27,6 +27,10 @@ public struct Generator: Sendable {
     public let index: PatternIndex
     public let clues: any ClueSource
     public let widths: GlyphWidthTable
+    /// Version des Erzeugungsverfahrens. Geht in die Puzzle-ID ein und bindet
+    /// damit Spielstände, geteilte Links und die geprüfte Seed-Liste an das
+    /// Verfahren, mit dem sie entstanden sind.
+    public static let currentVersion = 1
     public let generatorVersion: Int
     /// Wie viele Kandidaten die Füll-Engine je Suchknoten probiert.
     ///
@@ -39,7 +43,7 @@ public struct Generator: Sendable {
     public let lcvWidth: Int
 
     public init(layout: any LayoutProvider, index: PatternIndex, clues: any ClueSource,
-                widths: GlyphWidthTable, generatorVersion: Int = 1,
+                widths: GlyphWidthTable, generatorVersion: Int = Generator.currentVersion,
                 branchLimit: Int = 80, lcvWidth: Int = 18) {
         self.layout = layout
         self.index = index

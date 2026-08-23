@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Game Center: Bestenlisten und Erfolge. Auf der Bundle-ID
+	     com.kreuzwort.app ist die Capability aktiviert. -->
+	<key>com.apple.developer.game-center</key>
+	<true/>
+	<!-- App-Gruppe für das Widget fehlt hier noch ABSICHTLICH. Der Datenpfad
+	     ist gebaut (SharedSnapshot.swift, Standardgruppe group.com.kreuzwort),
+	     aber das Widget-Target existiert nicht, und die Gruppe ist im Account
+	     nicht registriert — eine Deklaration ohne registrierte Gruppe lässt die
+	     Signatur scheitern. Der Code prüft die Benutzbarkeit der Gruppe selbst
+	     und fällt sauber zurück, deshalb kostet das Fehlen hier nichts. Kommt
+	     dazu, wenn das Widget-Target angelegt wird. -->
+	<!-- iCloud/CloudKit fehlt hier ABSICHTLICH. Der Sync-Code existiert, wurde
+	     aber nie gegen einen echten CloudKit-Container ausgeführt (siehe
+	     CloudKitSyncBackend.swift). Eine Entitlement-Zeile würde ein Versprechen
+	     abgeben, das nicht geprüft ist — sie kommt dazu, wenn der Container
+	     steht und der Sync einmal wirklich gelaufen ist. -->
+</dict>
+</plist>

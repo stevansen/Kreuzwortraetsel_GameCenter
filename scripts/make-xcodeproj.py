@@ -37,6 +37,10 @@ def main() -> None:
         "projectConfigList", "targetConfigList",
         "projectDebug", "projectRelease", "targetDebug", "targetRelease",
         "packageRef", "resourcesRef", "resourcesBuildFile",
+        # Icon und Privacy-Manifest sind für die Einreichung Pflicht: ohne Icon
+        # lehnt der Upload ab, ohne Manifest seit Mai 2024 die Prüfung.
+        "assetsRef", "assetsBuildFile", "privacyRef", "privacyBuildFile",
+        "copyDataPhase",
     ]}
     ids[f"file:{INFO_PLIST}"] = uid(f"file:{INFO_PLIST}")
     for name in APP_SOURCES:
@@ -64,8 +68,10 @@ def main() -> None:
     for product in PRODUCTS:
         A(f"\t\t{ids[f'productBuild:{product}']} /* {product} in Frameworks */ = "
           f"{{isa = PBXBuildFile; productRef = {ids[f'product:{product}']} /* {product} */; }};")
-    A(f"\t\t{ids['resourcesBuildFile']} /* Resources in Resources */ = "
-      f"{{isa = PBXBuildFile; fileRef = {ids['resourcesRef']} /* Resources */; }};")
+    A(f"\t\t{ids['assetsBuildFile']} /* Assets.xcassets in Resources */ = "
+      f"{{isa = PBXBuildFile; fileRef = {ids['assetsRef']} /* Assets.xcassets */; }};")
+    A(f"\t\t{ids['privacyBuildFile']} /* PrivacyInfo.xcprivacy in Resources */ = "
+      f"{{isa = PBXBuildFile; fileRef = {ids['privacyRef']} /* PrivacyInfo.xcprivacy */; }};")
     A("/* End PBXBuildFile section */")
 
     # --- PBXFileReference ---
@@ -76,14 +82,14 @@ def main() -> None:
     for name in APP_SOURCES:
         A(f"\t\t{ids[f'file:{name}']} /* {name} */ = {{isa = PBXFileReference; "
           f"lastKnownFileType = sourcecode.swift; path = {name}; sourceTree = \"<group>\"; }};")
-    # Ordnerverweis: kopiert, was zur Bauzeit da ist. Der Katalog ist ein
-    # generiertes 41-MB-Artefakt und liegt nicht im Git — ein Einzeldateiverweis
-    # würde den Build brechen, sobald er fehlt.
-    A(f"\t\t{ids['resourcesRef']} /* Resources */ = {{isa = PBXFileReference; "
-      "lastKnownFileType = folder; name = Resources; path = ../Resources; "
-      "sourceTree = \"<group>\"; };")
     A(f"\t\t{ids[f'file:{INFO_PLIST}']} /* {INFO_PLIST} */ = {{isa = PBXFileReference; "
       f"lastKnownFileType = text.plist.xml; path = {INFO_PLIST}; sourceTree = \"<group>\"; }};")
+    A(f"\t\t{ids['assetsRef']} /* Assets.xcassets */ = {{isa = PBXFileReference; "
+      "lastKnownFileType = folder.assetcatalog; path = Kreuzwort/Assets.xcassets; "
+      "sourceTree = \"<group>\"; };")
+    A(f"\t\t{ids['privacyRef']} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; "
+      "lastKnownFileType = text.plist.xml; path = Kreuzwort/PrivacyInfo.xcprivacy; "
+      "sourceTree = \"<group>\"; };")
     A("/* End PBXFileReference section */")
 
     # --- PBXFrameworksBuildPhase ---
@@ -105,7 +111,8 @@ def main() -> None:
     A("\t\t\tisa = PBXGroup;")
     A("\t\t\tchildren = (")
     A(f"\t\t\t\t{ids['appGroup']} /* Kreuzwort */,")
-    A(f"\t\t\t\t{ids['resourcesRef']} /* Resources */,")
+    A(f"\t\t\t\t{ids['assetsRef']} /* Assets.xcassets */,")
+    A(f"\t\t\t\t{ids['privacyRef']} /* PrivacyInfo.xcprivacy */,")
     A(f"\t\t\t\t{ids['productsGroup']} /* Products */,")
     A("\t\t\t);")
     A("\t\t\tsourceTree = \"<group>\";")
@@ -139,6 +146,7 @@ def main() -> None:
     A(f"\t\t\t\t{ids['sourcesPhase']} /* Sources */,")
     A(f"\t\t\t\t{ids['frameworksPhase']} /* Frameworks */,")
     A(f"\t\t\t\t{ids['resourcesPhase']} /* Resources */,")
+    A(f"\t\t\t\t{ids['copyDataPhase']} /* Daten kopieren */,")
     A("\t\t\t);")
     A("\t\t\tbuildRules = (")
     A("\t\t\t);")
@@ -191,13 +199,64 @@ def main() -> None:
     A("\t\t};")
     A("/* End PBXProject section */")
 
+    # --- PBXShellScriptBuildPhase: Daten ins Bundle ---
+    #
+    # Warum ein Skript und kein Ordnerverweis in der Resources-Phase: ein
+    # Ordner mit dem Namen **Resources** im iOS-Bundle bringt codesign dazu,
+    # die Dateien in der Bundle-Wurzel für eigenständigen Code zu halten. Der
+    # Build scheiterte mit „code object is not signed at all / In subcomponent:
+    # AppIcon60x60@2x.png" — nachweisbar: nimmt man den Ordner heraus, signiert
+    # dasselbe Bundle sofort. Der Zielname ist deshalb „Data".
+    #
+    # Der zweite Grund, der schon für den Ordnerverweis galt, gilt weiter: der
+    # Katalog ist ein generiertes 43-MB-Artefakt und liegt nicht im Git. Fehlt
+    # er, warnt das Skript statt den Build zu brechen.
+    A("\n/* Begin PBXShellScriptBuildPhase section */")
+    A(f"\t\t{ids['copyDataPhase']} /* Daten kopieren */ = {{")
+    A("\t\t\tisa = PBXShellScriptBuildPhase;")
+    A("\t\t\talwaysOutOfDate = 1;")
+    A("\t\t\tbuildActionMask = 2147483647;")
+    A("\t\t\tfiles = (")
+    A("\t\t\t);")
+    A("\t\t\tinputPaths = (")
+    A("\t\t\t);")
+    A("\t\t\tname = \"Daten kopieren\";")
+    A("\t\t\toutputPaths = (")
+    A("\t\t\t);")
+    A("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    A("\t\t\tshellPath = /bin/sh;")
+    # pbxproj-Zeichenketten dürfen keine echten Zeilenumbrüche enthalten und
+    # Anführungszeichen müssen maskiert sein — sonst ist die Datei unparsbar.
+    # Der erste Versuch schrieb echte Umbrüche hinein und plutil verweigerte sie.
+    script_lines = [
+        "set -e",
+        'SRC="$SRCROOT/../Resources"',
+        'DST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Data"',
+        # Ein Ordner „Resources" aus einem älteren Build bleibt in DerivedData
+        # liegen und löst denselben codesign-Fehler erneut aus. Er wird deshalb
+        # bei jedem Build entfernt, nicht nur beim ersten.
+        'rm -rf "$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/Resources"',
+        'if [ -d "$SRC" ]; then',
+        '  rm -rf "$DST"',
+        '  mkdir -p "$DST"',
+        '  rsync -a --exclude .DS_Store "$SRC/" "$DST/"',
+        "else",
+        '  echo "warning: $SRC fehlt - die App startet ohne Katalog"',
+        "fi",
+    ]
+    escaped = "\\n".join(line.replace('"', '\\"') for line in script_lines) + "\\n"
+    A(f'\t\t\tshellScript = "{escaped}";')
+    A("\t\t};")
+    A("/* End PBXShellScriptBuildPhase section */")
+
     # --- PBXResourcesBuildPhase ---
     A("\n/* Begin PBXResourcesBuildPhase section */")
     A(f"\t\t{ids['resourcesPhase']} /* Resources */ = {{")
     A("\t\t\tisa = PBXResourcesBuildPhase;")
     A("\t\t\tbuildActionMask = 2147483647;")
     A("\t\t\tfiles = (")
-    A(f"\t\t\t\t{ids['resourcesBuildFile']} /* Resources in Resources */,")
+    A(f"\t\t\t\t{ids['assetsBuildFile']} /* Assets.xcassets in Resources */,")
+    A(f"\t\t\t\t{ids['privacyBuildFile']} /* PrivacyInfo.xcprivacy in Resources */,")
     A("\t\t\t);")
     A("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
     A("\t\t};")
@@ -234,6 +293,21 @@ def main() -> None:
     target_shared = [
         "ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor",
         "CODE_SIGN_STYLE = Automatic",
+        # Team aus dem Developer-Account; ohne das signiert Xcode nicht und der
+        # Upload nach App Store Connect ist nicht möglich.
+        "DEVELOPMENT_TEAM = JF8N3J347R",
+        # Getrennte Entitlements je Plattform: der Mac App Store verlangt die
+        # Sandbox, iOS kennt sie nicht.
+        '"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Kreuzwort/Kreuzwort.entitlements',
+        '"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Kreuzwort/Kreuzwort.entitlements',
+        '"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Kreuzwort/Kreuzwort-macOS.entitlements',
+        "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
+        # KREUZWORT_CLOUDKIT ist hier ABSICHTLICH nicht gesetzt. Der Schalter
+        # gehört zusammen mit dem iCloud-Entitlement gesetzt: ohne Entitlement
+        # trappt CKContainer(identifier:) und die App stürzt beim Start ab —
+        # genau das ist im Simulator passiert. Kommt beides gemeinsam dazu, wenn
+        # der CloudKit-Container steht und der Sync einmal wirklich lief.
+        'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)"',
         'CURRENT_PROJECT_VERSION = 1',
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = YES",
@@ -253,7 +327,7 @@ def main() -> None:
         'UIInterfaceOrientationLandscapeRight"',
         'LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks '
         '@executable_path/../Frameworks"',
-        "MARKETING_VERSION = 0.1",
+        "MARKETING_VERSION = 1.0",
         f'PRODUCT_BUNDLE_IDENTIFIER = {BUNDLE_ID}',
         'PRODUCT_NAME = "$(TARGET_NAME)"',
         "SWIFT_APPROACHABLE_CONCURRENCY = YES",

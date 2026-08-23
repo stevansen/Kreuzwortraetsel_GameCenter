@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Seit Mai 2024 Pflicht für die Einreichung. Die Angaben sind aus dem
+	     Quelltext belegt, nicht angenommen:
+
+	     * Kein Tracking, keine Werbe-IDs: AppTrackingTransparency und AdSupport
+	       kommen im Projekt nicht vor.
+	     * Keine Datenerhebung: die App hat keinen eigenen Server. Punkte und
+	       Spielstand gehen an Game Center bzw. in die iCloud des Nutzers — beides
+	       Apple-Dienste, nicht der Entwickler.
+	     * Eine deklarationspflichtige API wird benutzt: der Dateizeitstempel in
+	       ProgressStore.swift, um das zuletzt begonnene Rätsel zu finden.
+	       `UserDefaults` steht im Projekt nur in einem Kommentar und ist deshalb
+	       hier bewusst NICHT deklariert. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<!-- C617.1: Zeitstempel von Dateien im eigenen Container. -->
+				<string>C617.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>
