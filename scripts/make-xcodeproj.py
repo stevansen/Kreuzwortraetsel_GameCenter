@@ -18,6 +18,7 @@ import hashlib, os, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PROJECT_DIR = ROOT / "Apps" / "Kreuzwort.xcodeproj"
 APP_SOURCES = sorted(p.name for p in (ROOT / "Apps" / "Kreuzwort").glob("*.swift"))
+INFO_PLIST = "Info.plist"
 PRODUCTS = ["PuzzleKit", "ClueCatalog", "KreuzwortUI", "SyncKit", "GameServices"]
 BUNDLE_ID = "com.kreuzwort.app"
 DEPLOY_IOS = "18.0"
@@ -37,6 +38,7 @@ def main() -> None:
         "projectDebug", "projectRelease", "targetDebug", "targetRelease",
         "packageRef", "resourcesRef", "resourcesBuildFile",
     ]}
+    ids[f"file:{INFO_PLIST}"] = uid(f"file:{INFO_PLIST}")
     for name in APP_SOURCES:
         ids[f"file:{name}"] = uid(f"file:{name}")
         ids[f"build:{name}"] = uid(f"build:{name}")
@@ -80,6 +82,8 @@ def main() -> None:
     A(f"\t\t{ids['resourcesRef']} /* Resources */ = {{isa = PBXFileReference; "
       "lastKnownFileType = folder; name = Resources; path = ../Resources; "
       "sourceTree = \"<group>\"; };")
+    A(f"\t\t{ids[f'file:{INFO_PLIST}']} /* {INFO_PLIST} */ = {{isa = PBXFileReference; "
+      f"lastKnownFileType = text.plist.xml; path = {INFO_PLIST}; sourceTree = \"<group>\"; }};")
     A("/* End PBXFileReference section */")
 
     # --- PBXFrameworksBuildPhase ---
@@ -111,6 +115,7 @@ def main() -> None:
     A("\t\t\tchildren = (")
     for name in APP_SOURCES:
         A(f"\t\t\t\t{ids[f'file:{name}']} /* {name} */,")
+    A(f"\t\t\t\t{ids[f'file:{INFO_PLIST}']} /* {INFO_PLIST} */,")
     A("\t\t\t);")
     A("\t\t\tpath = Kreuzwort;")
     A("\t\t\tsourceTree = \"<group>\";")
@@ -232,6 +237,10 @@ def main() -> None:
         'CURRENT_PROJECT_VERSION = 1',
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = YES",
+        # Eine eigene Info.plist als Basis: CFBundleURLTypes und
+        # NSUserActivityTypes sind Arrays und über INFOPLIST_KEY_* nicht
+        # ausdrückbar. Xcode mischt die übrigen Schlüssel weiterhin hinein.
+        'INFOPLIST_FILE = Kreuzwort/Info.plist',
         'INFOPLIST_KEY_CFBundleDisplayName = Kreuzwort',
         'INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games"',
         'INFOPLIST_KEY_NSHumanReadableCopyright = ""',

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Eigenes Schema für kreuzwort://p/<variante>/<stufe>/<seed>.
+	     Als Datei und nicht über INFOPLIST_KEY_*, weil das nur einzelne Werte
+	     setzen kann und CFBundleURLTypes ein Array von Dictionaries ist. Die
+	     übrigen Schlüssel werden von Xcode weiterhin hineingemischt. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.kreuzwort.app.puzzle</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kreuzwort</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Handoff: dasselbe Rätsel auf dem nächsten Gerät fortsetzen. -->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.kreuzwort.app.puzzle</string>
+	</array>
+</dict>
+</plist>

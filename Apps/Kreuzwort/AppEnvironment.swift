@@ -41,6 +41,9 @@ final class AppEnvironment {
     private(set) var store: ProgressStore?
     private var profileStore: ProfileStore?
     private var coordinator: GameCenterCoordinator?
+    private var sync: SyncCoordinator?
+    private var snapshotStore: SharedSnapshotStore?
+    private(set) var syncAvailable = false
 
     func load() async {
         state = .loading
@@ -77,7 +80,23 @@ final class AppEnvironment {
                 outbox: try SubmissionOutbox(),
                 deviceID: store.deviceID)
             self.coordinator = coordinator
+            // Sync: CloudKit wenn ein Konto und ein Container da sind, sonst der
+            // ausdrückliche Rückfall. Ohne ihn wäre die App in der Entwicklung
+            // nicht startbar — CloudKit braucht ein bezahltes Konto.
+            let backend: any SyncBackend = (try? CloudKitSyncBackend())
+                ?? LocalOnlySyncBackend()
+            let sync = SyncCoordinator(backend: backend, progressStore: store,
+                                       profileStore: profileStore,
+                                       deviceID: store.deviceID)
+            self.sync = sync
+            snapshotStore = try? SharedSnapshotStore()
+
             state = .ready
+            Task { [weak self] in
+                await sync.start()
+                await sync.synchronize()
+                await self?.reloadAfterSync()
+            }
             Task { [weak self] in
                 await coordinator.start()
                 await self?.refreshGameCenterState()
@@ -163,6 +182,8 @@ final class AppEnvironment {
     func persist(_ progress: PuzzleProgress) {
         try? store?.save(progress)
         resumable = store?.mostRecentUnfinished()
+        writeSnapshot()
+        if let sync { Task { await sync.push(progress: progress) } }
     }
 
     // MARK: - Abschluss verbuchen
@@ -194,6 +215,48 @@ final class AppEnvironment {
         }
         try? profileStore?.save(profile)
         await refreshGameCenterState()
+        // Sync ist ein Anhang, der ausfallen darf: nichts hier wartet auf ihn.
+        if let sync {
+            await sync.push(profile: profile)
+            await sync.push(progress: progress)
+        }
+        writeSnapshot()
+    }
+
+    /// Nach einem Sync: lokale Sicht neu aufbauen. Ein fremdes Gerät kann ein
+    /// Rätsel beendet oder Punkte beigetragen haben.
+    private func reloadAfterSync() async {
+        guard let profileStore, let store else { return }
+        profile = profileStore.load()
+        resumable = store.mostRecentUnfinished()
+        syncAvailable = await sync?.isAvailable ?? false
+        await coordinator?.reconcile(profile: profile, today: Self.today())
+        await refreshGameCenterState()
+        writeSnapshot()
+    }
+
+    /// Schreibt die Widget-Momentaufnahme. Klein und flach — ein Widget darf
+    /// keine 43-MB-Katalogdatei öffnen.
+    func writeSnapshot() {
+        try? snapshotStore?.update(profile: profile, today: Self.today(),
+                                   resumable: resumable,
+                                   letterCells: resumable?.cells.count ?? 1,
+                                   now: Date().timeIntervalSince1970)
+    }
+
+    // MARK: - Verweise und Handoff
+
+    /// Öffnet ein Rätsel aus einem Link. Fehlerhafte Links werden **abgelehnt**,
+    /// nicht geraten — ein Tippfehler soll nicht das falsche Rätsel öffnen.
+    func puzzle(from link: PuzzleLink) throws -> Puzzle {
+        variant = link.variant
+        difficulty = link.difficulty
+        return try puzzle(seed: link.seed)
+    }
+
+    func puzzle(fromURL url: URL) -> Puzzle? {
+        guard let link = try? PuzzleLink.parse(url.absoluteString) else { return nil }
+        return try? puzzle(from: link)
     }
 
     private func refreshGameCenterState() async {

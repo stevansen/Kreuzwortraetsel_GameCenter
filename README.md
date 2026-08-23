@@ -75,6 +75,60 @@ Das Ambiguitätsgatter läuft **zweimal**: auf der Langform und nach dem Kürzen
 Kürzen erzeugt Mehrdeutigkeit — „Hauptstadt von Frankreich" → „Stadt" sieht
 formal gültig aus und ist unbrauchbar.
 
+## Synchronisierung
+
+**Zusammengeführt wird lokal.** Kein Backend entscheidet, welche Fassung gewinnt:
+`PuzzleProgress.merged` und `PlayerProfile.merged` tun das, und beide sind
+kommutativ und idempotent. Die Reihenfolge, in der sich Geräte melden, ist
+deshalb ohne Bedeutung.
+
+**Optimistische Sperre, kein blindes Überschreiben.** Lädt ein Gerät hoch, ohne
+vorher zu holen, wirft das Backend einen Konflikt und liefert den Server-Stand
+mit. Der Coordinator führt zusammen und sendet einmal erneut. Ohne das verliert
+ein Gerät die Daten des anderen — nicht lokal, aber in der Cloud und damit für
+jedes dritte Gerät. Das ist CloudKits `serverRecordChanged`.
+
+Das In-Memory-Backend führt einen Versionsstand **pro Datensatz**, so wie
+CloudKit einen `recordChangeTag` je `CKRecord` führt. Eine globale Uhr ist zu
+grob: nach einem Konflikt an einem Datensatz gälten sonst alle als bekannt, und
+der Wiederholversuch scheitert am selben Konflikt.
+
+**Nicht verifiziert:** `CloudKitSyncBackend` kompiliert und folgt dem
+dokumentierten `CKSyncEngine`-Ablauf, ist aber gegen echtes CloudKit nie
+gelaufen — das braucht ein bezahltes Entwicklerkonto, einen bereitgestellten
+Container und Entitlements. Deshalb liegt alles, was falsch sein *kann*, im
+`SyncCoordinator` und ist über `InMemorySyncBackend` mit zwei simulierten
+Geräten getestet. `LocalOnlySyncBackend` ist der ausdrückliche Rückfall: ohne ihn
+wäre die App in der Entwicklung nicht startbar.
+
+**Widgets:** der Datenpfad steht und ist getestet (`SharedSnapshot` — klein und
+flach, weil ein Widget keine 43-MB-Katalogdatei öffnen darf). Offen ist die
+Extension-Target-Plumbing im Xcode-Projekt; sie braucht eine
+App-Group-Entitlement und damit Provisioning. Nebenbei gelernt: auf macOS liefert
+`containerURL(forSecurityApplicationGroupIdentifier:)` auch für eine erfundene
+Gruppe eine anlegbare URL — `isShared` ist dort kein verlässliches Signal, auf
+iOS schon.
+
+## Rätsel teilen und weitergeben
+
+Ein Rätsel ist vollständig durch seinen Seed beschrieben, also ist „schick mir
+dieses Rätsel" ein Link:
+
+```
+kreuzwort://p/arrow/schwer/4711
+https://kreuzwort.app/p/arrow/schwer/4711
+```
+
+Der Parser ist nachsichtig bei Kleinigkeiten (abschließender Schrägstrich,
+Groß- und Kleinschreibung) und **unnachsichtig bei allem anderen**: eine
+unbekannte Variante wird abgelehnt und nicht auf `classic` geraten, sonst öffnet
+ein Tippfehler das falsche Rätsel. Versionsangaben sind optional — ein Link soll
+nicht brechen, weil der Katalog gewachsen ist.
+
+Handoff nutzt dieselbe Nutzlast über `NSUserActivity`: der schnelle Pfad, während
+CloudKit der verlässliche ist. Das Rätsel auf dem iPad weiterzuspielen soll nicht
+auf eine Synchronisierung warten.
+
 ## Game Center
 
 **Game Center ist Anzeige, nicht Quelle der Wahrheit.** GameKit gibt
@@ -199,7 +253,7 @@ Menüs.
 | M5 Spielansicht, Scoring, Eingabe, Persistenz, Startbildschirm | ✅ |
 | M6 Xcode-Projekt für iOS/iPadOS/macOS, Lokalisierung de/en/it | ✅ |
 | M7 Game Center: Profil, Achievements, Leaderboards, Outbox | ✅ |
-| M8 CloudKit + Handoff + Widgets | offen |
+| M8 Sync-Schicht, Deep Links, Handoff, Widget-Datenpfad | ✅ mit Einschränkung (siehe unten) |
 | M9 tvOS · M10 Barrierefreiheit, Lokalisierung | offen |
 
 ## Bekannte Lücken

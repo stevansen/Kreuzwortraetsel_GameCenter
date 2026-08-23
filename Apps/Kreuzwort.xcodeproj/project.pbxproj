@@ -28,6 +28,7 @@
 		B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KreuzwortApp.swift; sourceTree = "<group>"; };
 		1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformSurface.swift; sourceTree = "<group>"; };
 		4C72359361FE565684D4CF86 /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = ../Resources; sourceTree = "<group>"; };
+		68E77A9D7BC78A97D4F4E27B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +64,7 @@
 				5420869B93AA8C8198B23B2E /* HomeView.swift */,
 				B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */,
 				1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */,
+				68E77A9D7BC78A97D4F4E27B /* Info.plist */,
 			);
 			path = Kreuzwort;
 			sourceTree = "<group>";
@@ -222,6 +224,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Kreuzwort/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kreuzwort;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -246,6 +249,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Kreuzwort/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Kreuzwort;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.puzzle-games";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
