@@ -1,6 +1,6 @@
 # Kreuzwort
 
-Native Rätsel-App für alle Apple-Plattformen mit **zwei Varianten** — klassisches
+Native Rätsel-App für iOS, iPadOS, macOS, tvOS und watchOS mit **zwei Varianten** — klassisches
 Kreuzworträtsel und Schwedenrätsel (Fragen im Gitter, Pfeile) —, prozeduraler
 Rätselerzeugung, Game Center und geräteübergreifendem Spielstand.
 
@@ -40,7 +40,7 @@ könnten iPhone und Mac aus demselben Seed unterschiedliche Rätsel bauen.
 ```
 Packages/
   PuzzleKit/      Modelle, Layouts, Füll-Engine, Validator, Scoring
-                  — kein Foundation, kein Apple-Framework, baut für alle Plattformen
+                  — kein Foundation, kein Apple-Framework, baut für alle Zielplattformen
     Layout/       LayoutProvider (der Varianten-Seam) + ClassicLayout + Templatesuche
     Fill/         PatternIndex (Bitsets) + varianten-agnostische CSP-Engine
   ClueCatalog/    SQLite, Normalisierung, QA, Assembler, Häufigkeiten
@@ -158,14 +158,48 @@ dasselbe Rätsel in 7.500 Knoten. Wer hier weiter optimieren will, sollte bei de
 Wertreihenfolge anfangen, nicht bei den Budgets.
 
 **Die Generierung ist noch zu langsam für „on device".** Der Prompt setzt p95
-unter 1,5 s an; gemessen auf einem M-Mac im Release-Build: classic/leicht 0,00 s,
-classic/mittel 1,6 s, classic/experte 20 s, arrow/schwer 50 s, arrow/experte 93 s.
-Die schweren Stufen brauchen mehrere Anläufe, und jeder verwirft ein komplettes
-Layout. Zwei Ansatzpunkte, beide unangetastet: die LCV-Bewertung kopiert je
-Kandidat den Suchzustand (Kandidatenzahlen ließen sich inkrementell fortschreiben),
-und ein gescheiterter Anlauf wirft alles weg statt gezielt zurückzusetzen. Für
-den Vorrat vorgenerierter Rätsel im Hintergrund reicht es heute; als
-Sofort-Generierung auf dem Gerät nicht.
+unter 1,5 s an. Gemessen auf einem M-Mac im Release-Build, nach der
+Fortschritts-Sondierung:
+
+| | Leicht | Mittel | Schwer | Experte |
+|---|---|---|---|---|
+| classic | 0,0 s | 2,2 s | 24 s | 6 s |
+| arrow | 8 s | 0,4 s | 41 s | 20 s |
+
+Für den im Prompt vorgesehenen Hintergrund-Vorrat (drei Rätsel je Variante und
+Stufe) reicht das; als Sofort-Generierung auf Knopfdruck nicht. Der nächste
+Hebel ist erneut **nicht** die Innenschleife (siehe unten), sondern die
+Reihenfolge, in der Layouts probiert werden: die Templatesuche könnte Layouts
+nach geschätzter Füllbarkeit vorsortieren, statt sie zufällig zu ziehen.
+
+**Gemessen statt geraten — drei verworfene Optimierungen.** Der Reihe nach, weil
+die Fehlschläge nützlicher sind als das Ergebnis:
+
+1. *Allokationen vermeiden* — Kandidatenzählung ohne Bitset-Aufbau, Wortpuffer
+   statt Kopie, `inout`-Durchreichung. Sauber gemessen bei identischer
+   Knotenzahl: **20,4 s vorher, 30,3 s nachher.** `formIntersection` ist
+   inlinebar und vektorisiert, ein Wortpuffer über drei `inout`-Ebenen nicht.
+2. *Begrenzte Auswahl statt vollständiger Sortierung* in `order()`. Ein Slot hat
+   bis zu 11.524 Kandidaten, von denen 80 gebraucht werden — die Sortierung
+   wirkte wie der offensichtliche Verschwender. Gemessen: **98 s.**
+3. *Gestaffeltes Knotenbudget je Versuch.* Denkfehler: Versuch und Layout sind
+   gekoppelt, ein kleines Budget bestraft also nicht das hoffnungslose Layout,
+   sondern das früh gezogene. Drei von acht Kombinationen scheiterten ganz.
+4. *Stillstandsdetektor* („seit N Knoten kein neuer Bestwert"). Beim Füllen der
+   letzten Slots gibt es lange Plateaus ohne neuen Bestwert — genau die wurden
+   abgewürgt. classic/experte und arrow/leicht fielen aus.
+
+Was geholfen hat, kam aus dem Blick auf die richtige Zahl: bei classic/schwer
+stand im Report „acht Versuche, der erfolgreiche brauchte 1.184 Knoten" — bei 26
+Sekunden Laufzeit. Über 95 % der Zeit floss in Layouts, die nie eine Chance
+hatten. Die **Fortschritts-Sondierung** bricht ein Layout ab, das nach 30.000
+Knoten nie 45 % der Slots belegt hat. Wirkung: classic/experte 20 s → 6 s,
+arrow/experte 93 s → 20 s. Bei arrow/experte sank die Knotenzahl von 471.208 auf
+83.813 — die Sondierung landet schneller auf einem gutartigen Layout.
+
+Die Lehre für den nächsten Anlauf: erst die Verteilung der Kosten messen, dann
+optimieren. Vier von fünf Versuchen hier waren Verschlechterungen, und alle vier
+klangen vorher plausibel.
 
 **Templatevielfalt bei großen Gittern.** Die Suche findet für 15×15 nur eine
 Handvoll Muster (für 7×7 und 9×9 dutzende). Aufeinanderfolgende Experte-Rätsel

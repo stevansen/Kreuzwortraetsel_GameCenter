@@ -50,6 +50,12 @@ public struct FillEngine {
     /// Fragezelle ab — deshalb pro Slot und nicht global.
     public let slotFilters: [PatternIndex.WordFilter]
     public let branchLimit: Int
+    /// Knotenbudget dieses Versuchs.
+    public let nodeBudget: Int
+    /// Nach so vielen Knoten wird der Fortschritt geprüft.
+    public let progressProbeNodes: Int
+    /// So viele Slots muss die Suche bis dahin mindestens einmal belegt haben.
+    public let progressFloor: Int
     /// Wie viele Kandidaten je Knoten nach Least-Constraining-Value bewertet werden.
     ///
     /// Zusammen mit `branchLimit` entscheidet dieser Wert, **welchen Ausschnitt**
@@ -62,13 +68,36 @@ public struct FillEngine {
 
     public init(index: PatternIndex, topology: Topology, profile: DifficultyProfile,
                 slotFilters: [PatternIndex.WordFilter], branchLimit: Int = 80,
-                lcvWidth: Int = 18) {
+                lcvWidth: Int = 18, nodeBudget: Int? = nil) {
         self.index = index
         self.topology = topology
         self.profile = profile
         self.slotFilters = slotFilters
         self.branchLimit = branchLimit
         self.lcvWidth = lcvWidth
+        self.nodeBudget = nodeBudget ?? profile.nodeBudget
+        // **Wo die Zeit tatsächlich hingeht.** Gemessen an classic/schwer: acht
+        // Versuche, der erfolgreiche brauchte 1.184 Knoten — und der Lauf dauerte
+        // 26 Sekunden, weil die sieben gescheiterten jeder das volle Budget von
+        // 600.000 Knoten verbrannten. Über 95 % der Zeit floss in Layouts, die
+        // nie eine Chance hatten; kein Tuning der Innenschleife hätte das geändert.
+        //
+        // Die Abbruchbedingung ist bewusst **Fortschritt**, nicht Budget. Ein
+        // gestaffeltes Budget je Versuch war der erste Anlauf und ein Rückschritt:
+        // Versuch und Layout sind gekoppelt, ein kleines Budget bestraft also
+        // nicht das hoffnungslose Layout, sondern das früh gezogene. Drei von acht
+        // Kombinationen scheiterten damit ganz. Hier wird stattdessen gefragt: hat
+        // die Suche nach einer Sondierungsphase überhaupt einen nennenswerten Teil
+        // des Gitters belegt? Ein Layout, das nach 30.000 Knoten nie über 45 % kam,
+        // kommt auch nach 600.000 nicht.
+        self.progressProbeNodes = min(max(nodeBudget ?? profile.nodeBudget, 1) / 20, 30_000)
+        self.progressFloor = max(1, Int(Double(topology.slots.count) * 0.45))
+        //
+        // Ein zusätzlicher Stillstandsdetektor („seit N Knoten kein neuer
+        // Bestwert") war der zweite Anlauf und ein Rückschritt: beim Füllen der
+        // letzten Slots gibt es lange Plateaus ohne neuen Bestwert, und genau die
+        // wurden abgewürgt. classic/experte und arrow/leicht scheiterten damit
+        // ganz, für 6 Sekunden Gewinn bei classic/schwer. Verworfen.
         self.crossings = topology.crossings()
     }
 
@@ -263,7 +292,9 @@ public struct FillEngine {
     private func solve(_ state: inout State, masks: [Bitset], maxProperNouns: Int,
                        rng: inout SplitMix64) -> Bool {
         if state.filled == topology.slots.count { return true }
-        if state.nodes > profile.nodeBudget { return false }
+        if state.nodes > nodeBudget { return false }
+        // Sondierung: kein nennenswerter Fortschritt -> Layout aufgeben.
+        if state.nodes >= progressProbeNodes, state.maxFilled < progressFloor { return false }
 
         guard let pick = pickSlot(state, masks, maxProperNouns: maxProperNouns) else { return false }
         if pick.candidates.isEmpty {
@@ -287,7 +318,7 @@ public struct FillEngine {
                                              maxProperNouns: maxProperNouns, idx: idx)
         for local in ranked {
             state.nodes += 1
-            if state.nodes > profile.nodeBudget { return false }
+            if state.nodes > nodeBudget { return false }
 
             // Setzen
             var written: [Int] = []
