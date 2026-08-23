@@ -12,6 +12,8 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 22) {
                 Text(loc: "home.title").font(.largeTitle.bold())
 
+                statsRow
+
                 if let resumable = environment.resumable {
                     resumeCard(resumable)
                 }
@@ -58,6 +60,37 @@ struct HomeView: View {
             .frame(maxWidth: 560)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Punkte und Serie kommen aus dem lokalen Profil, nicht aus Game Center —
+    /// deshalb stehen sie auch ohne Anmeldung da.
+    private var statsRow: some View {
+        HStack(spacing: 14) {
+            stat("home.points", "\(environment.profile.points.total)")
+            stat("home.solved", "\(environment.profile.solved.total)")
+            stat("home.streak", "\(environment.currentStreak)")
+            Spacer(minLength: 0)
+            if environment.gameCenterAvailable {
+                Button { GameCenterBridge.presentDashboard() } label: {
+                    Label { Text(loc: "home.gameCenter") }
+                        icon: { Image(systemName: "gamecontroller") }
+                }
+                .buttonStyle(.bordered)
+            } else if environment.pendingSubmissions > 0 {
+                // Ehrlich statt still: die Punkte sind gezählt, sie warten nur.
+                Label { Text(loc: "home.pending") }
+                    icon: { Image(systemName: "arrow.up.circle") }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func stat(_ key: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(value).font(.title3.bold().monospacedDigit())
+            Text(loc: key).font(.caption2).foregroundStyle(.secondary)
+        }
     }
 
     private func resumeCard(_ progress: PuzzleProgress) -> some View {

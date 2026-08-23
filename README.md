@@ -75,6 +75,33 @@ Das Ambiguitätsgatter läuft **zweimal**: auf der Langform und nach dem Kürzen
 Kürzen erzeugt Mehrdeutigkeit — „Hauptstadt von Frankreich" → „Stadt" sieht
 formal gültig aus und ist unbrauchbar.
 
+## Game Center
+
+**Game Center ist Anzeige, nicht Quelle der Wahrheit.** GameKit gibt
+Achievement-Fortschritt nur begrenzt zurück und ist gar nicht verfügbar, solange
+der Spieler nicht angemeldet ist. Die Wahrheit ist `PlayerProfile` im Kern; Game
+Center wird daraus beschrieben.
+
+Jedes Feld des Profils ist so gewählt, dass Zusammenführen **nicht schiefgehen
+kann**: wachsende Zähler je Gerät, Mengenvereinigung, logisches Oder. Kein
+Zeitstempel, kein Tiebreak. Wo das konkret wird: die **Serie** ist eine Menge von
+Tagen, kein Zähler — zwei Geräte, die denselben Tag lösen, würden einen Zähler
+beide erhöhen.
+
+Achievement-Fortschritt ist **berechnet, nicht gespeichert**: das Profil hält die
+Rohzahlen, `AchievementEvaluator` leitet die 22 Auszeichnungen daraus ab. Zwei
+Wahrheiten zu pflegen wäre genau der Fehler, den die Trennung vermeiden soll.
+
+Die `SubmissionOutbox` ist für den **Normalfall** gebaut, nicht den
+Ausnahmefall: die App ist ohne Anmeldung voll spielbar, also entstehen Punkte
+regelmäßig bevor Game Center erreichbar ist. Sie überlebt App-Neustarts, fasst
+wiederholte Meldungen zusammen, und eine abgelehnte Meldung nimmt die anderen
+nicht mit.
+
+`FakeGameCenterService` ist keine Testbequemlichkeit, sondern Voraussetzung:
+ohne sie wäre die halbe Anbindung nur auf einem echten Gerät mit eingerichteten
+Leaderboards prüfbar — also praktisch nie.
+
 ## Sprachen
 
 Die **Oberfläche** gibt es in Deutsch, Englisch und Italienisch
@@ -171,7 +198,8 @@ Menüs.
 | M4 `ArrowLayout` (Schwedenrätsel), alle vier Stufen | ✅ |
 | M5 Spielansicht, Scoring, Eingabe, Persistenz, Startbildschirm | ✅ |
 | M6 Xcode-Projekt für iOS/iPadOS/macOS, Lokalisierung de/en/it | ✅ |
-| M7 Game Center · M8 CloudKit + Handoff + Widgets | offen |
+| M7 Game Center: Profil, Achievements, Leaderboards, Outbox | ✅ |
+| M8 CloudKit + Handoff + Widgets | offen |
 | M9 tvOS · M10 Barrierefreiheit, Lokalisierung | offen |
 
 ## Bekannte Lücken

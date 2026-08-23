@@ -70,3 +70,9 @@
 "error.catalogMissing" = "Catalogo delle definizioni non trovato. Esegui prima catalogbuild.";
 "error.emptyCatalog" = "Il catalogo delle definizioni è vuoto.";
 "error.notReady" = "Il catalogo non è ancora stato caricato.";
+
+"home.points" = "Punti";
+"home.solved" = "Risolti";
+"home.streak" = "Serie";
+"home.gameCenter" = "Game Center";
+"home.pending" = "In attesa di accesso";

@@ -18,7 +18,7 @@ import hashlib, os, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PROJECT_DIR = ROOT / "Apps" / "Kreuzwort.xcodeproj"
 APP_SOURCES = sorted(p.name for p in (ROOT / "Apps" / "Kreuzwort").glob("*.swift"))
-PRODUCTS = ["PuzzleKit", "ClueCatalog", "KreuzwortUI", "SyncKit"]
+PRODUCTS = ["PuzzleKit", "ClueCatalog", "KreuzwortUI", "SyncKit", "GameServices"]
 BUNDLE_ID = "com.kreuzwort.app"
 DEPLOY_IOS = "18.0"
 DEPLOY_MAC = "15.0"

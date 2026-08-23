@@ -69,3 +69,9 @@
 "error.catalogMissing" = "The clue catalogue was not found. Run catalogbuild first.";
 "error.emptyCatalog" = "The clue catalogue is empty.";
 "error.notReady" = "The catalogue has not finished loading.";
+
+"home.points" = "Points";
+"home.solved" = "Solved";
+"home.streak" = "Streak";
+"home.gameCenter" = "Game Center";
+"home.pending" = "Submissions waiting for sign-in";

@@ -4,6 +4,7 @@ import PuzzleKit
 import ClueCatalog
 import KreuzwortUI
 import SyncKit
+import GameServices
 
 /// Alles, was die App einmal aufbaut und dann behält: Katalog, Pattern-Index,
 /// Templates, Breitentabelle, Spielstand-Speicher.
@@ -21,6 +22,10 @@ final class AppEnvironment {
 
     private(set) var state: State = .loading
     private(set) var resumable: PuzzleProgress?
+    /// Die Wahrheit über Punkte, Serie und Achievements — nicht Game Center.
+    private(set) var profile = PlayerProfile()
+    private(set) var gameCenterAvailable = false
+    private(set) var pendingSubmissions = 0
 
     var variant: PuzzleVariant = .classic
     var difficulty: Difficulty = .mittel
@@ -34,6 +39,8 @@ final class AppEnvironment {
     private var templates: [GridTemplate] = []
     private var widths: GlyphWidthTable = .bootstrap
     private(set) var store: ProgressStore?
+    private var profileStore: ProfileStore?
+    private var coordinator: GameCenterCoordinator?
 
     func load() async {
         state = .loading
@@ -58,7 +65,26 @@ final class AppEnvironment {
             clues = CatalogClueSource(reader: reader, widths: widths)
             templates = Self.loadTemplates(in: resources.appendingPathComponent("grids/classic"))
             resumable = store.mostRecentUnfinished()
+
+            let profileStore = try ProfileStore()
+            self.profileStore = profileStore
+            profile = profileStore.load()
+
+            // Game Center im Hintergrund: die App ist ohne Anmeldung vollständig
+            // spielbar, also darf hier nichts warten.
+            let coordinator = GameCenterCoordinator(
+                service: LiveGameCenterService(),
+                outbox: try SubmissionOutbox(),
+                deviceID: store.deviceID)
+            self.coordinator = coordinator
             state = .ready
+            Task { [weak self] in
+                await coordinator.start()
+                await self?.refreshGameCenterState()
+                await coordinator.reconcile(profile: self?.profile ?? PlayerProfile(),
+                                            today: Self.today())
+                await self?.refreshGameCenterState()
+            }
         } catch {
             state = .failed("\(error)")
         }
@@ -137,6 +163,56 @@ final class AppEnvironment {
     func persist(_ progress: PuzzleProgress) {
         try? store?.save(progress)
         resumable = store?.mostRecentUnfinished()
+    }
+
+    // MARK: - Abschluss verbuchen
+
+    /// Lokale Tagesnummer. `PuzzleKit` hat kein Foundation und damit keine
+    /// Zeitzonen — die Umrechnung gehört hierher, wo die Zeitzone bekannt ist.
+    static func today() -> Int {
+        let seconds = Date().timeIntervalSince1970
+            + Double(TimeZone.current.secondsFromGMT())
+        return Int(seconds / 86_400)
+    }
+
+    /// Nach einem gelösten Rätsel: Profil fortschreiben, Game Center beliefern.
+    func recordCompletion(puzzle: Puzzle, progress: PuzzleProgress,
+                          breakdown: ScoreBreakdown, isDaily: Bool) async {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let completion = PlayerProfile.Completion(
+            variant: puzzle.variant, difficulty: puzzle.difficulty,
+            points: breakdown.total, hints: progress.hints,
+            elapsedSeconds: progress.elapsedSeconds,
+            answerIDs: puzzle.entries.map(\.answerID), isDaily: isDaily,
+            day: Self.today(), hour: hour, platform: Self.platformTag)
+
+        if let coordinator {
+            profile = await coordinator.record(completion, profile: profile,
+                                               today: Self.today()).profile
+        } else {
+            profile.record(completion, device: store?.deviceID ?? 1)
+        }
+        try? profileStore?.save(profile)
+        await refreshGameCenterState()
+    }
+
+    private func refreshGameCenterState() async {
+        guard let coordinator else { return }
+        gameCenterAvailable = await coordinator.canPresentDashboard
+        pendingSubmissions = await coordinator.pendingSubmissions
+    }
+
+    var currentStreak: Int { profile.currentStreak(today: Self.today()) }
+
+    /// Kennung der Fläche für das Plattform-Achievement.
+    static var platformTag: String {
+        #if os(tvOS)
+        "tv"
+        #elseif os(macOS)
+        "mac"
+        #else
+        "phone"
+        #endif
     }
 
     enum AppError: LocalizedError {

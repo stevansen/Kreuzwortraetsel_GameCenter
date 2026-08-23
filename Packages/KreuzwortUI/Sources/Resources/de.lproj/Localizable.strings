@@ -70,3 +70,9 @@
 "error.catalogMissing" = "Der Fragenkatalog wurde nicht gefunden. Zuerst catalogbuild laufen lassen.";
 "error.emptyCatalog" = "Der Fragenkatalog ist leer.";
 "error.notReady" = "Der Katalog ist noch nicht geladen.";
+
+"home.points" = "Punkte";
+"home.solved" = "Gelöst";
+"home.streak" = "Serie";
+"home.gameCenter" = "Game Center";
+"home.pending" = "Meldungen warten auf Anmeldung";

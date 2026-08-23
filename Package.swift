@@ -54,6 +54,8 @@ let package = Package(
         // MARK: - Plattform-Adapter
         .target(name: "GameServices", dependencies: ["PuzzleKit"],
                 path: "Packages/GameServices/Sources", swiftSettings: strict),
+        .testTarget(name: "GameServicesTests", dependencies: ["GameServices", "PuzzleKit"],
+                    path: "Packages/GameServices/Tests", swiftSettings: strict),
         .target(name: "SyncKit", dependencies: ["PuzzleKit"],
                 path: "Packages/SyncKit/Sources", swiftSettings: strict),
         .testTarget(name: "SyncKitTests", dependencies: ["SyncKit", "PuzzleKit"],
@@ -80,7 +82,8 @@ let package = Package(
         // Dieselben Quellen tragen die Xcode-App (Apps/Kreuzwort.xcodeproj) und
         // diesen SwiftPM-Host. Eine Wahrheit, zwei Build-Systeme.
         .executableTarget(name: "KreuzwortMac",
-                          dependencies: ["KreuzwortUI", "PuzzleKit", "ClueCatalog", "SyncKit"],
+                          dependencies: ["KreuzwortUI", "PuzzleKit", "ClueCatalog",
+                                         "SyncKit", "GameServices"],
                           path: "Apps/Kreuzwort", swiftSettings: strict),
 
         .executableTarget(name: "puzzlegen", dependencies: ["PuzzleKit", "ClueCatalog"],

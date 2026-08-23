@@ -50,11 +50,19 @@ struct RootView: View {
 
         case .ready:
             if let session {
-                PuzzleScreen(session: session, capabilities: capabilities) {
-                    // Fortschritt sichern, bevor das Rätsel verlassen wird.
+                PuzzleScreen(session: session, capabilities: capabilities,
+                             onSolved: { breakdown in
+                    // Verbuchen, sobald gelöst: Profil, Achievements, Leaderboards.
+                    Task {
+                        await environment.recordCompletion(
+                            puzzle: session.puzzle, progress: session.progress,
+                            breakdown: breakdown, isDaily: false)
+                    }
+                    environment.persist(session.progress)
+                }, onNextPuzzle: {
                     environment.persist(session.progress)
                     self.session = nil
-                }
+                })
                 .id(session.puzzle.id)
                 .onDisappear { environment.persist(session.progress) }
             } else {

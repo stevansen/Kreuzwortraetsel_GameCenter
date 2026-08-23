@@ -12,11 +12,18 @@ public struct PuzzleScreen: View {
     @State private var showsClueList = false
     private let capabilities: SurfaceCapabilities
     private let onNextPuzzle: () -> Void
+    /// Wird genau einmal gerufen, wenn das Rätsel gelöst ist.
+    ///
+    /// Ein Callback statt einer Abhängigkeit auf GameServices: die Ansicht muss
+    /// nicht wissen, dass es Game Center gibt — sie meldet, dass etwas fertig ist.
+    private let onSolved: (ScoreBreakdown) -> Void
 
     public init(session: PuzzleSession, capabilities: SurfaceCapabilities,
+                onSolved: @escaping (ScoreBreakdown) -> Void = { _ in },
                 onNextPuzzle: @escaping () -> Void = {}) {
         self._session = State(initialValue: session)
         self.capabilities = capabilities
+        self.onSolved = onSolved
         self.onNextPuzzle = onNextPuzzle
     }
 
@@ -61,6 +68,9 @@ public struct PuzzleScreen: View {
         .onKeyPress(.delete) { session.apply(.deleteBackward); return .handled }
         .onAppear { session.start() }
         .onDisappear { session.pause() }
+        .onChange(of: session.isSolved) { _, solved in
+            if solved, let breakdown = session.breakdown { onSolved(breakdown) }
+        }
     }
 
     private var playArea: some View {

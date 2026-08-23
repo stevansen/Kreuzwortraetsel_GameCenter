@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		D7DB88C2747A18A0C6B68BA3 /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */; };
+		61200B600EF5890411C39195 /* GameCenterBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 364DA94420A89EF7D1F1DDC2 /* GameCenterBridge.swift */; };
 		95140CBCBF751AA7F548E156 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5420869B93AA8C8198B23B2E /* HomeView.swift */; };
 		6A7D73054BA50994B5296C27 /* KreuzwortApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */; };
 		F00B6CB6834559DED84F4E85 /* PlatformSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */; };
@@ -15,12 +16,14 @@
 		C5D96A6B7D5A6A71B6594F2D /* ClueCatalog in Frameworks */ = {isa = PBXBuildFile; productRef = C81CF6D6E2105C7E00E10DD2 /* ClueCatalog */; };
 		89E97945358667E4C83070FE /* KreuzwortUI in Frameworks */ = {isa = PBXBuildFile; productRef = DC83A211F60CEC7F3C823B72 /* KreuzwortUI */; };
 		A408D54658691A50A2C17689 /* SyncKit in Frameworks */ = {isa = PBXBuildFile; productRef = D274AE930DEDAB6C390EEAE6 /* SyncKit */; };
+		02EA44CE106FD9CDBC341EA4 /* GameServices in Frameworks */ = {isa = PBXBuildFile; productRef = F6A68C5891116F6767339B87 /* GameServices */; };
 		6C1534DA43165C774C883664 /* Resources in Resources */ = {isa = PBXBuildFile; fileRef = 4C72359361FE565684D4CF86 /* Resources */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		85673086EF6CFD3A1F8591AF /* Kreuzwort.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kreuzwort.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		364DA94420A89EF7D1F1DDC2 /* GameCenterBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameCenterBridge.swift; sourceTree = "<group>"; };
 		5420869B93AA8C8198B23B2E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KreuzwortApp.swift; sourceTree = "<group>"; };
 		1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatformSurface.swift; sourceTree = "<group>"; };
@@ -36,6 +39,7 @@
 				C5D96A6B7D5A6A71B6594F2D /* ClueCatalog in Frameworks */,
 				89E97945358667E4C83070FE /* KreuzwortUI in Frameworks */,
 				A408D54658691A50A2C17689 /* SyncKit in Frameworks */,
+				02EA44CE106FD9CDBC341EA4 /* GameServices in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -55,6 +59,7 @@
 			isa = PBXGroup;
 			children = (
 				20F2D34EABCFDF9E87AFDEC2 /* AppEnvironment.swift */,
+				364DA94420A89EF7D1F1DDC2 /* GameCenterBridge.swift */,
 				5420869B93AA8C8198B23B2E /* HomeView.swift */,
 				B4F5F4F28961C3ED6ACA38E8 /* KreuzwortApp.swift */,
 				1B60B6FCA6318C6B0A44DE01 /* PlatformSurface.swift */,
@@ -91,6 +96,7 @@
 				C81CF6D6E2105C7E00E10DD2 /* ClueCatalog */,
 				DC83A211F60CEC7F3C823B72 /* KreuzwortUI */,
 				D274AE930DEDAB6C390EEAE6 /* SyncKit */,
+				F6A68C5891116F6767339B87 /* GameServices */,
 			);
 			productName = Kreuzwort;
 			productReference = 85673086EF6CFD3A1F8591AF /* Kreuzwort.app */;
@@ -152,6 +158,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D7DB88C2747A18A0C6B68BA3 /* AppEnvironment.swift in Sources */,
+				61200B600EF5890411C39195 /* GameCenterBridge.swift in Sources */,
 				95140CBCBF751AA7F548E156 /* HomeView.swift in Sources */,
 				6A7D73054BA50994B5296C27 /* KreuzwortApp.swift in Sources */,
 				F00B6CB6834559DED84F4E85 /* PlatformSurface.swift in Sources */,
@@ -301,6 +308,10 @@
 		D274AE930DEDAB6C390EEAE6 /* SyncKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = SyncKit;
+		};
+		F6A68C5891116F6767339B87 /* GameServices */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = GameServices;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
