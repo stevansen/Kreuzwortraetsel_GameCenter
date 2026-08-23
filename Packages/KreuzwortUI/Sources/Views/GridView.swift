@@ -201,7 +201,21 @@ struct ClueCellView: View {
                         if showsText {
                             Text(entry.text)
                                 .font(.system(size: fontSize))
-                                .minimumScaleFactor(0.5)
+                                // 0,5 machte den Breiten-Etat aus dem Katalog
+                                // wirkungslos: SwiftUI zwang jede Frage in die
+                                // Zelle, indem es sie auf die halbe Größe
+                                // schrumpfte. Im gerenderten Schwedenrätsel
+                                // standen dadurch Fragen wie „Abk. für
+                                // Bundesautobahntankstelle" in einer Schrift, die
+                                // niemand liest, und brachen mitten im Wort.
+                                // 0,8 begrenzt das; was dann nicht passt, wird
+                                // sichtbar gekürzt statt unlesbar verkleinert.
+                                //
+                                // Die Ursache liegt tiefer: der Etat im Katalog
+                                // und die tatsächliche Zeilenbreite dieser Zelle
+                                // sind nicht miteinander verbunden. Solange das
+                                // so ist, ist dies eine Grenze, keine Lösung.
+                                .minimumScaleFactor(0.8)
                                 .lineLimit(entries.count > 1 ? 2 : 3)
                                 .multilineTextAlignment(.leading)
                                 .frame(maxWidth: .infinity, alignment: .leading)

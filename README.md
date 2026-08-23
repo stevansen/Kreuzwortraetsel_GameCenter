@@ -402,6 +402,30 @@ Der Engpass ist derselbe wie überall in diesem Abschnitt: der Kurzfragen-Pool.
 arrow/leicht wählt aus 151 bis 217 Wörtern je Länge. Wer die Zuverlässigkeit auf
 100 % bringen will, braucht mehr Kurzfragen — nicht mehr Suchheuristik.
 
+**Fragen in Schwedenrätsel-Zellen brechen mitten im Wort.** Sichtbar erst im
+gerenderten Rätsel auf dem iPhone: „Möbelstü ck", „Flüssigkei t", „Sprechweis e",
+„Abk. für Bundesautobahn tankstelle". Zwei Ursachen, die getrennt gehören:
+
+1. `GridView` hatte `minimumScaleFactor(0.5)`. SwiftUI zwang damit jede Frage in
+   die Zelle, indem es sie auf die halbe Größe schrumpfte — der Breiten-Etat aus
+   dem Katalog war wirkungslos, und die Schrift wurde unlesbar. Jetzt 0,8. Das
+   ist eine **Grenze, keine Lösung**: was nicht passt, wird sichtbar gekürzt.
+2. Die eigentliche Ursache: der Etat im Katalog (`singleClueBudget`,
+   `doubleClueBudget`) beschreibt die **Gesamtbreite** eines Textes, nicht die
+   Zeilenbreite der Zelle, in der er landet. Ein einzelnes langes Wort passt
+   deshalb in den Etat und trotzdem in keine Zeile. Solange beides nicht
+   verbunden ist, bleiben Brüche und Kürzungen.
+
+Der Weg dorthin: die Zellenbreite aus der Topologie an die Fragenauswahl
+weitergeben und ein Wort, das keine Zeile füllt, als Ausschlusskriterium führen —
+nicht als Vorliebe, wie es `CatalogClueSource` heute tut. Eine erste Schätzung
+der Kosten („ein Drittel des Etats ist die Zeile") ergab 90 % Ausfall und ist
+damit als Modell widerlegt, nicht als Messung brauchbar. Die Zeilenbreite muss
+aus der Geometrie kommen.
+
+Die klassische Variante ist davon nicht betroffen: dort stehen die Fragen in
+einer Liste neben dem Gitter und dürfen umbrechen.
+
 **Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf
 9×11 scheitert oft; der Generator kommt durch, weil er bis `maxAttempts` mal mit
 abgeleiteten Seeds neu ansetzt. Die Testsuite prüft genau diese Zusage. Eine
