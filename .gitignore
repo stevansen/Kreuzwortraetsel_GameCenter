@@ -1,0 +1,17 @@
+# Build
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/xcuserdata/
+.DS_Store
+
+# Rohdaten: 1,1 GB Dumps und Korpora. Reproduzierbar über scripts/harvest_*.py,
+# gehören nicht in die Versionsverwaltung.
+raw/
+!raw/.gitkeep
+
+# Generierter Katalog (41 MB). Wird mit catalogbuild aus raw/ erzeugt.
+Resources/catalog.sqlite
+Resources/catalog.sqlite-wal
+Resources/catalog.sqlite-shm
+Resources/ATTRIBUTION.md

@@ -1,0 +1,169 @@
+public struct HintPolicy: OptionSet, Sendable, Codable {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+
+    public static let revealLetter = HintPolicy(rawValue: 1 << 0)
+    public static let revealWord = HintPolicy(rawValue: 1 << 1)
+    public static let checkGrid = HintPolicy(rawValue: 1 << 2)
+    public static let finalCheckOnly = HintPolicy(rawValue: 1 << 3)
+
+    public static let all: HintPolicy = [.revealLetter, .revealWord, .checkGrid]
+}
+
+/// **Die einzige Stelle für Balancing.** Geschlüsselt nach `(variant, difficulty)`.
+///
+/// Schwierigkeit ist mehrdimensional: Geometrie, Vokabelseltenheit, Clue-Härte,
+/// Hilfen — und bei `arrow` zusätzlich Doppelpfeil- und Knickpfeilanteil, die
+/// die Schwierigkeit **ohne** seltenere Wörter erhöhen.
+/// **Die einzige Stelle für Balancing.**
+///
+/// Zwei Abweichungen von der ersten Fassung, beide durch Messung erzwungen:
+///
+/// **`clueTiers` ist eine Obergrenze, kein Fenster.** „Mittel" heißt „keine
+/// Frage härter als Tier 3", nicht „nur Fragen aus Tier 2–3". Weil das Tier aus
+/// dem Zipf abgeleitet wird, waren `minZipf` und ein zweiseitiges Tier-Fenster
+/// kollinear: für Mittel ergab die Schnittmenge das Band 3,8–4,6 und schloss
+/// damit ausgerechnet die häufigsten Wörter aus. Ein mittelschweres Rätsel darf
+/// selbstverständlich einfache Fragen enthalten.
+///
+/// **Knickpfeile gibt es auch bei „Leicht" — 8 %, nicht 0 %.** Mit einer Quote
+/// von exakt null darf kein waagrechter Lauf am linken Rand beginnen und kein
+/// senkrechter oben, weil dort keine Zelle liegt, aus der ein gerader Pfeil
+/// zeigen könnte. In einem 9×11 mit 24 Fragezellen ist das nicht erfüllbar, und
+/// gedruckte leichte Schwedenrätsel enthalten sehr wohl einzelne Knickpfeile.
+///
+/// **Der Kreuzungsanteil steigt mit der Schwierigkeit, nicht umgekehrt.** Für
+/// den Spieler bedeuten mehr Kreuzungen mehr Hinweise, also *leichter*; für den
+/// Generator bedeuten sie mehr Constraints, also *schwerer*. Da das
+/// Vokabularband der Stufe „Leicht" mit 1.251 Antworten das kleinste ist, kann
+/// gerade dort das Gitter nicht das dichteste sein. Die Auflösung: Schwierigkeit
+/// wächst über *beide* Achsen gemeinsam — seltenere Wörter **und** dichtere
+/// Verzahnung. Leichte Rätsel sind licht und vertraut, schwere dicht und selten.
+///
+/// **`crossRatio` < 1, also keine volle Verzahnung.** Voll verzahnte Gitter
+/// (jeder Buchstabe in zwei Wörtern) sind die amerikanische Bauform und
+/// verlangen Wortlisten in der Größenordnung 50.000 pro Schwierigkeitsband. Der
+/// Katalog hat bei zipf >= 4,5 aber 1.251 Antworten. Deutschsprachige
+/// Kreuzworträtsel sind traditionell ohnehin nicht voll verzahnt: einzelne
+/// Buchstaben stehen nur in einem Wort. Die Regel lautet jetzt für **beide**
+/// Varianten: Läufe der Länge 1 sind erlaubt, Läufe der Länge 2 nicht.
+///
+/// Zur Wortlänge: die Obergrenzen liegen bewusst deutlich **unter** der
+/// Gitterkante. Ein Muster, in dem eine Zeile über die volle Breite ein Wort
+/// ist, erzeugt gestapelte Langwörter — und die sind mit einem prozeduralen
+/// Füller praktisch nicht lösbar. Der erste Lauf scheiterte genau daran: ein
+/// 11×11 mit sechs 11-Buchstaben-Slots blieb bei 0 von 38 belegten Slots.
+public struct DifficultyProfile: Sendable {
+    public let variant: PuzzleVariant
+    public let difficulty: Difficulty
+
+    public let sizes: [GridSize]
+    /// `classic`: Schwarzfeldanteil. `arrow`: Fragezellenanteil.
+    public let deadCellRatio: ClosedRange<Double>
+    public let maxDoubleArrowRatio: Double
+    public let maxBentArrowRatio: Double
+    public let wordLength: ClosedRange<Int>
+    public let minZipf: Double
+    public let clueTiers: ClosedRange<Int>
+    public let maxProperNounRatio: Double
+    /// **Zielband** für den Anteil der Buchstaben, die in zwei Wörtern liegen.
+    ///
+    /// Kein Mindestwert, sondern ein Band: 1,0 (volle Verzahnung) ist nicht nur
+    /// schwer füllbar, sondern mit diesem Katalog unmöglich. Die Templatesuche
+    /// steuert bewusst **in** dieses Band hinein.
+    public let crossRatio: ClosedRange<Double>
+    /// Breitenbudget in 1/1000 em für eine Fragezelle mit einem bzw. zwei Clues.
+    public let singleClueBudget: Int
+    public let doubleClueBudget: Int
+    public let parSeconds: Double
+    public let referenceLetterCells: Int
+    public let hints: HintPolicy
+    public let nodeBudget: Int
+    public let maxAttempts: Int
+
+    public static func profile(_ variant: PuzzleVariant, _ difficulty: Difficulty) -> DifficultyProfile {
+        switch (variant, difficulty) {
+        // MARK: classic
+        case (.classic, .leicht):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(square: 7), GridSize(square: 9)],
+                  deadCellRatio: 0.20 ... 0.26, maxDoubleArrowRatio: 0, maxBentArrowRatio: 0,
+                  wordLength: 3 ... 7, minZipf: 4.5, clueTiers: 1 ... 2,
+                  maxProperNounRatio: 0.05, crossRatio: 0.40 ... 0.56,
+                  singleClueBudget: 0, doubleClueBudget: 0,
+                  parSeconds: 360, referenceLetterCells: 55, hints: .all,
+                  nodeBudget: 250_000, maxAttempts: 8)
+        case (.classic, .mittel):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(square: 11)],
+                  deadCellRatio: 0.17 ... 0.22, maxDoubleArrowRatio: 0, maxBentArrowRatio: 0,
+                  wordLength: 3 ... 8, minZipf: 3.4, clueTiers: 1 ... 3,
+                  maxProperNounRatio: 0.10, crossRatio: 0.44 ... 0.60,
+                  singleClueBudget: 0, doubleClueBudget: 0,
+                  parSeconds: 840, referenceLetterCells: 99, hints: .all,
+                  nodeBudget: 400_000, maxAttempts: 8)
+        case (.classic, .schwer):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(square: 13)],
+                  deadCellRatio: 0.15 ... 0.20, maxDoubleArrowRatio: 0, maxBentArrowRatio: 0,
+                  wordLength: 3 ... 9, minZipf: 2.8, clueTiers: 1 ... 4,
+                  maxProperNounRatio: 0.15, crossRatio: 0.50 ... 0.66,
+                  singleClueBudget: 0, doubleClueBudget: 0,
+                  parSeconds: 1500, referenceLetterCells: 141,
+                  hints: [.revealLetter, .checkGrid],
+                  nodeBudget: 600_000, maxAttempts: 8)
+        case (.classic, .experte):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(square: 15)],
+                  deadCellRatio: 0.13 ... 0.18, maxDoubleArrowRatio: 0, maxBentArrowRatio: 0,
+                  wordLength: 3 ... 10, minZipf: 2.0, clueTiers: 1 ... 5,
+                  maxProperNounRatio: 0.20, crossRatio: 0.54 ... 0.70,
+                  singleClueBudget: 0, doubleClueBudget: 0,
+                  parSeconds: 2700, referenceLetterCells: 192, hints: [.finalCheckOnly],
+                  nodeBudget: 2_500_000, maxAttempts: 10)
+
+        // MARK: arrow (Schwedenrätsel)
+        case (.arrow, .leicht):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(rows: 11, cols: 9)],
+                  deadCellRatio: 0.22 ... 0.30, maxDoubleArrowRatio: 0.25, maxBentArrowRatio: 0.08,
+                  wordLength: 3 ... 7, minZipf: 4.5, clueTiers: 1 ... 2,
+                  maxProperNounRatio: 0.05, crossRatio: 0.50 ... 0.72,
+                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  parSeconds: 420, referenceLetterCells: 75, hints: .all,
+                  nodeBudget: 300_000, maxAttempts: 10)
+        case (.arrow, .mittel):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(rows: 13, cols: 11)],
+                  deadCellRatio: 0.20 ... 0.28, maxDoubleArrowRatio: 0.40, maxBentArrowRatio: 0.15,
+                  wordLength: 3 ... 9, minZipf: 3.4, clueTiers: 1 ... 3,
+                  maxProperNounRatio: 0.10, crossRatio: 0.50 ... 0.72,
+                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  parSeconds: 900, referenceLetterCells: 111, hints: .all,
+                  nodeBudget: 500_000, maxAttempts: 10)
+        case (.arrow, .schwer):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(rows: 15, cols: 13)],
+                  deadCellRatio: 0.18 ... 0.26, maxDoubleArrowRatio: 0.55, maxBentArrowRatio: 0.22,
+                  wordLength: 3 ... 10, minZipf: 2.8, clueTiers: 1 ... 4,
+                  maxProperNounRatio: 0.15, crossRatio: 0.52 ... 0.74,
+                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  parSeconds: 1560, referenceLetterCells: 155,
+                  hints: [.revealLetter, .checkGrid],
+                  nodeBudget: 700_000, maxAttempts: 10)
+        case (.arrow, .experte):
+            .init(variant: variant, difficulty: difficulty,
+                  sizes: [GridSize(rows: 17, cols: 13)],
+                  deadCellRatio: 0.17 ... 0.25, maxDoubleArrowRatio: 0.65, maxBentArrowRatio: 0.32,
+                  wordLength: 3 ... 11, minZipf: 2.0, clueTiers: 1 ... 5,
+                  maxProperNounRatio: 0.20, crossRatio: 0.54 ... 0.76,
+                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  parSeconds: 2700, referenceLetterCells: 178, hints: [.finalCheckOnly],
+                  nodeBudget: 1_000_000, maxAttempts: 10)
+        }
+    }
+
+    public static var all: [DifficultyProfile] {
+        PuzzleVariant.allCases.flatMap { v in Difficulty.allCases.map { profile(v, $0) } }
+    }
+}
