@@ -28,20 +28,34 @@ public struct Generator: Sendable {
     public let clues: any ClueSource
     public let widths: GlyphWidthTable
     public let generatorVersion: Int
+    /// Wie viele Kandidaten die Füll-Engine je Suchknoten probiert.
+    ///
+    /// Ein niedriger Wert macht die Suche **unvollständig**: hat ein Slot 900
+    /// Kandidaten und werden nur 80 probiert, kann ein lösbarer Teilbaum
+    /// übersehen werden — und über Dutzende Slots hinweg summiert sich das zu
+    /// einem Fehlschlag auf einer erfüllbaren Instanz.
+    public let branchLimit: Int
 
     public init(layout: any LayoutProvider, index: PatternIndex, clues: any ClueSource,
-                widths: GlyphWidthTable, generatorVersion: Int = 1) {
+                widths: GlyphWidthTable, generatorVersion: Int = 1,
+                branchLimit: Int = 80) {
         self.layout = layout
         self.index = index
         self.clues = clues
         self.widths = widths
         self.generatorVersion = generatorVersion
+        self.branchLimit = branchLimit
     }
 
     public struct Report: Sendable {
         public var attempts = 0
         public var nodes = 0
         public var failures: [String] = []
+        /// Bester Suchfortschritt über alle Versuche: `maxFilled` von `slots`.
+        public var bestProgress = 0
+        public var slotCount = 0
+        /// Slots, an denen die Suche am häufigsten hängen blieb.
+        public var worstSlots: [(slotID: Int, length: Int, hits: Int)] = []
     }
 
     public func generate(seed: UInt64, difficulty: Difficulty)
@@ -70,8 +84,21 @@ public struct Generator: Sendable {
 
                 let filters = slotFilters(topology: topology, profile: profile)
                 let engine = FillEngine(index: index, topology: topology, profile: profile,
-                                        slotFilters: filters)
-                let outcome = try engine.fill(rng: &rng)
+                                        slotFilters: filters, branchLimit: branchLimit)
+                let box = FillEngine.TraceBox()
+                report.slotCount = topology.slots.count
+                defer {
+                    if box.trace.maxFilled > report.bestProgress {
+                        report.bestProgress = box.trace.maxFilled
+                        report.worstSlots = box.trace.blockedBySlot
+                            .sorted { $0.value > $1.value }.prefix(4).map { pair in
+                                let slot = topology.slots.first(where: { $0.id == pair.key })
+                                return (slotID: pair.key, length: slot?.length ?? 0,
+                                        hits: pair.value)
+                            }
+                    }
+                }
+                let outcome = try engine.fill(rng: &rng, trace: box)
                 report.nodes += outcome.nodes
 
                 let puzzle = try assemble(seed: seed, difficulty: difficulty, profile: profile,

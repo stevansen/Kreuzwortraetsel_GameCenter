@@ -171,9 +171,43 @@ func cmdGen(_ args: Args) {
     case .arrow: layout = ArrowLayout()
     }
 
-    let gen = Generator(layout: layout, index: ctx.index, clues: ctx.clues, widths: ctx.widths)
+    let gen = Generator(layout: layout, index: ctx.index, clues: ctx.clues, widths: ctx.widths,
+                        branchLimit: args.int("branch", 80))
     let seed = args.uint64("seed", 1)
     let t0 = Date()
+
+    // Fortschrittsdiagnose: einen Versuch von Hand fahren, damit bei Fehlschlag
+    // sichtbar ist, wie weit die Suche kam und an welchem Slot sie hing.
+    if args.has("trace") {
+        var rng = SplitMix64(seed: SplitMix64.derive(seed, 0))
+        let size = profile2(variant, difficulty).sizes[0]
+        if let topo = try? layout.makeTopology(size: size,
+                                               profile: profile2(variant, difficulty), rng: &rng) {
+            let p = profile2(variant, difficulty)
+            let filters = gen.slotFilters(topology: topo, profile: p)
+            let engine = FillEngine(index: ctx.index, topology: topo, profile: p,
+                                    slotFilters: filters, branchLimit: args.int("branch", 80))
+            let box = FillEngine.TraceBox()
+            _ = try? engine.fill(rng: &rng, trace: box)
+            let t = box.trace
+            print("\nSpur: \(t.maxFilled)/\(topo.slots.count) Slots maximal belegt, "
+                + "\(t.nodes) Knoten")
+            let worst = t.blockedBySlot.sorted { $0.value > $1.value }.prefix(6)
+            if !worst.isEmpty {
+                print("häufigste Blockade:")
+                for (id, hits) in worst {
+                    if let s = topo.slots.first(where: { $0.id == id }) {
+                        let cands = ctx.index.mask(length: s.length,
+                                                   filter: filters[topo.slots.firstIndex(of: s)!])
+                        print("  Slot \(id) Länge \(s.length) \(s.direction.label) "
+                            + "bei (\(s.start.row),\(s.start.col)) · \(hits)× blockiert · "
+                            + "\(cands.count) Startkandidaten")
+                    }
+                }
+            }
+        }
+    }
+
     do {
         let (puzzle, report) = try gen.generate(seed: seed, difficulty: difficulty)
         let secs = Date().timeIntervalSince(t0)
@@ -187,6 +221,10 @@ func cmdGen(_ args: Args) {
         print("\(error)")
         exit(2)
     }
+}
+
+func profile2(_ v: PuzzleVariant, _ d: Difficulty) -> DifficultyProfile {
+    DifficultyProfile.profile(v, d)
 }
 
 // MARK: - sweep
@@ -246,8 +284,11 @@ func cmdDiag(_ args: Args) {
     let ctx = makeContext(args)
     let diffName = args.string("difficulty", "mittel")
     guard let difficulty = Difficulty(rawValue: diffName) else { die("Stufe? \(diffName)") }
-    let profile = DifficultyProfile.profile(.classic, difficulty)
-    let layout = ClassicLayout(templates: ctx.templates)
+    let variantName = args.string("variant", "classic")
+    guard let variant = PuzzleVariant(rawValue: variantName) else { die("Variante? \(variantName)") }
+    let profile = DifficultyProfile.profile(variant, difficulty)
+    let layout: any LayoutProvider = variant == .classic
+        ? ClassicLayout(templates: ctx.templates) : ArrowLayout()
     var rng = SplitMix64(seed: args.uint64("seed", 1))
     let size = profile.sizes[rng.int(below: profile.sizes.count)]
     guard let topo = try? layout.makeTopology(size: size, profile: profile, rng: &rng) else {
@@ -257,11 +298,28 @@ func cmdDiag(_ args: Args) {
     let filters = gen.slotFilters(topology: topo, profile: profile)
     let engine = FillEngine(index: ctx.index, topology: topo, profile: profile, slotFilters: filters)
 
-    print("\n\(difficulty.label) \(size.label) · \(topo.slots.count) Slots · "
+    print("\n\(variant.label) \(difficulty.label) \(size.label) · \(topo.slots.count) Slots · "
         + "Zipf >= \(fmt(profile.minZipf, 1)) · Tier \(profile.clueTiers.lowerBound)–"
         + "\(profile.clueTiers.upperBound) · Wortlänge \(profile.wordLength.lowerBound)–"
         + "\(profile.wordLength.upperBound)")
-    print(GridTemplate(size: size, kinds: topo.kinds).pretty)
+    for r in 0 ..< size.rows {
+        print(String((0 ..< size.cols).map { c -> Character in
+            switch topo.kinds[size.index(Cell(r, c))] {
+            case .letter: "."
+            case .block: "#"
+            case .clue: "?"
+            }
+        }))
+    }
+    // Bei arrow entscheidet die besitzende Fragezelle über das Breitenbudget:
+    // eine Zelle mit zwei Fragen halbiert es. Deshalb hier getrennt zählen.
+    var budgets: [Int: Int] = [:]
+    for f in filters { if let b = f.maxShortWidth { budgets[b, default: 0] += 1 } }
+    if !budgets.isEmpty {
+        print("\nSlots je Breitenbudget: "
+            + budgets.sorted { $0.key < $1.key }
+                .map { "\($0.key): \($0.value)" }.joined(separator: " · "))
+    }
 
     let diag = engine.diagnose().sorted { $0.candidates < $1.candidates }
     print("\nengste Slots:")

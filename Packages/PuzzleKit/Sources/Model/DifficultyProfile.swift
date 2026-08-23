@@ -26,6 +26,38 @@ public struct HintPolicy: OptionSet, Sendable, Codable {
 /// damit ausgerechnet die häufigsten Wörter aus. Ein mittelschweres Rätsel darf
 /// selbstverständlich einfache Fragen enthalten.
 ///
+/// **arrow/schwer: `clueTiers` bis 5, dafür `minZipf` zurück auf 2,8.** Hier
+/// steckte eine versteckte Doppelschranke: Tier 5 beginnt bei zipf < 2,6, und
+/// Eigennamen wie Abkürzungen werden zusätzlich um ein Tier hochgesetzt. Mit
+/// `clueTiers: 1...4` war das Band also faktisch enger als die 2,4, die
+/// darüberstand — und ausgerechnet Eigennamen fielen doppelt heraus. Die
+/// Unterscheidung zu Experte trägt jetzt `minZipf` allein (2,8 gegen 2,0), was
+/// auch der ehrlichere Regler ist.
+///
+/// **arrow/schwer, erste Fassung: zipf >= 2,4.** Der sprechende Vergleich: arrow/experte
+/// ist größer (13×17 gegen 13×15) und dichter — und füllt trotzdem, weil sein
+/// Band bei 2,0 anfängt. Schwer blieb mit 2,8 konstant bei 15 von 43 Slots
+/// stehen, unabhängig vom Knotenbudget. Nicht die Geometrie war zu schwer,
+/// sondern der Pool zu klein.
+///
+/// **arrow/leicht nimmt zipf >= 3,9, nicht 4,5.** Bei 4,5 bleiben katalogweit
+/// 1.251 Antworten übrig. Das trägt ein 7×7-Classic-Gitter mit 14 Slots, aber
+/// kein 9×11-Schwedenrätsel mit 24 — dort brach die Suche nach 360 Knoten ab.
+/// „Leicht" heißt vertraute Wörter, und zipf 3,9 ist noch klar Alltagswortschatz.
+///
+/// **arrow/leicht beginnt bei Wortlänge 4, nicht 3.** Dreibuchstaber, die
+/// gleichzeitig häufig (zipf >= 4,5) sind *und* eine Kurzfrage im halben
+/// Zellbudget haben, gibt es im Katalog vierzig. Zwölf solche Slots, die sich
+/// gegenseitig kreuzen, sind nicht füllbar — und für ein leichtes Rätsel ist der
+/// Verzicht kein Verlust: kurze Dreibuchstaber sind meist Abkürzungen.
+///
+/// **Arrow-Gitter sind lichter als classic-Gitter derselben Stufe.** Beim
+/// Schwedenrätsel muss jede Antwort zusätzlich einen Kurzclue haben, der in seine
+/// Zelle passt — bei einer Zelle mit zwei Fragen in die halbe Zelle. Das ist ein
+/// weiterer Filter auf demselben Katalog, also muss die Geometrie nachgeben. Mit
+/// arrow/mittel bei Kreuzungsanteil 0,50–0,72 (dichter als classic/schwer) kam
+/// die Füllung über 22 von 36 Slots nicht hinaus.
+///
 /// **Knickpfeile gibt es auch bei „Leicht" — 8 %, nicht 0 %.** Mit einer Quote
 /// von exakt null darf kein waagrechter Lauf am linken Rand beginnen und kein
 /// senkrechter oben, weil dort keine Zelle liegt, aus der ein gerader Pfeil
@@ -126,38 +158,38 @@ public struct DifficultyProfile: Sendable {
         case (.arrow, .leicht):
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 11, cols: 9)],
-                  deadCellRatio: 0.22 ... 0.30, maxDoubleArrowRatio: 0.25, maxBentArrowRatio: 0.08,
-                  wordLength: 3 ... 7, minZipf: 4.5, clueTiers: 1 ... 2,
-                  maxProperNounRatio: 0.05, crossRatio: 0.50 ... 0.72,
-                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  deadCellRatio: 0.24 ... 0.36, maxDoubleArrowRatio: 0.18, maxBentArrowRatio: 0.10,
+                  wordLength: 4 ... 7, minZipf: 3.9, clueTiers: 1 ... 2,
+                  maxProperNounRatio: 0.05, crossRatio: 0.34 ... 0.50,
+                  singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 420, referenceLetterCells: 75, hints: .all,
                   nodeBudget: 300_000, maxAttempts: 10)
         case (.arrow, .mittel):
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 13, cols: 11)],
-                  deadCellRatio: 0.20 ... 0.28, maxDoubleArrowRatio: 0.40, maxBentArrowRatio: 0.15,
+                  deadCellRatio: 0.22 ... 0.32, maxDoubleArrowRatio: 0.28, maxBentArrowRatio: 0.16,
                   wordLength: 3 ... 9, minZipf: 3.4, clueTiers: 1 ... 3,
-                  maxProperNounRatio: 0.10, crossRatio: 0.50 ... 0.72,
-                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  maxProperNounRatio: 0.10, crossRatio: 0.40 ... 0.54,
+                  singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 900, referenceLetterCells: 111, hints: .all,
                   nodeBudget: 500_000, maxAttempts: 10)
         case (.arrow, .schwer):
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 15, cols: 13)],
                   deadCellRatio: 0.18 ... 0.26, maxDoubleArrowRatio: 0.55, maxBentArrowRatio: 0.22,
-                  wordLength: 3 ... 10, minZipf: 2.8, clueTiers: 1 ... 4,
-                  maxProperNounRatio: 0.15, crossRatio: 0.52 ... 0.74,
-                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  wordLength: 3 ... 8, minZipf: 2.8, clueTiers: 1 ... 5,
+                  maxProperNounRatio: 0.15, crossRatio: 0.42 ... 0.56,
+                  singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 1560, referenceLetterCells: 155,
                   hints: [.revealLetter, .checkGrid],
-                  nodeBudget: 700_000, maxAttempts: 10)
+                  nodeBudget: 1_500_000, maxAttempts: 10)
         case (.arrow, .experte):
             .init(variant: variant, difficulty: difficulty,
                   sizes: [GridSize(rows: 17, cols: 13)],
                   deadCellRatio: 0.17 ... 0.25, maxDoubleArrowRatio: 0.65, maxBentArrowRatio: 0.32,
                   wordLength: 3 ... 11, minZipf: 2.0, clueTiers: 1 ... 5,
-                  maxProperNounRatio: 0.20, crossRatio: 0.54 ... 0.76,
-                  singleClueBudget: 14_000, doubleClueBudget: 7_500,
+                  maxProperNounRatio: 0.20, crossRatio: 0.50 ... 0.64,
+                  singleClueBudget: 16_000, doubleClueBudget: 9_500,
                   parSeconds: 2700, referenceLetterCells: 178, hints: [.finalCheckOnly],
                   nodeBudget: 1_000_000, maxAttempts: 10)
         }

@@ -18,6 +18,17 @@ public struct FillOutcome: Sendable {
     public let nodes: Int
 }
 
+/// Wie weit die Suche gekommen ist. Der Unterschied zwischen „harte Instanz"
+/// (kommt bis 30 von 34 und scheitert am Rest) und „irgendwas ist kaputt"
+/// (kommt nie über 3) ist an dieser Zahl ablesbar — und nur an ihr.
+public struct FillTrace: Sendable {
+    public var nodes = 0
+    public var maxFilled = 0
+    public var deadSlotHits = 0
+    /// Wie oft ein Slot die Suche blockiert hat, nach Slot-ID.
+    public var blockedBySlot: [Int: Int] = [:]
+}
+
 /// Die varianten-agnostische CSP-Engine.
 ///
 /// Sie sieht ausschließlich Slots und deren Kreuzungen. Ob die Frage in einer
@@ -35,16 +46,20 @@ public struct FillEngine {
     /// Fragezelle ab — deshalb pro Slot und nicht global.
     public let slotFilters: [PatternIndex.WordFilter]
     public let branchLimit: Int
+    /// Wie viele Kandidaten je Knoten nach Least-Constraining-Value bewertet werden.
+    public let lcvWidth: Int
 
     private let crossings: [[(other: Int, mine: Int, theirs: Int)]]
 
     public init(index: PatternIndex, topology: Topology, profile: DifficultyProfile,
-                slotFilters: [PatternIndex.WordFilter], branchLimit: Int = 80) {
+                slotFilters: [PatternIndex.WordFilter], branchLimit: Int = 80,
+                lcvWidth: Int = 18) {
         self.index = index
         self.topology = topology
         self.profile = profile
         self.slotFilters = slotFilters
         self.branchLimit = branchLimit
+        self.lcvWidth = lcvWidth
         self.crossings = topology.crossings()
     }
 
@@ -59,9 +74,17 @@ public struct FillEngine {
         var filled = 0
         var properNouns = 0
         var nodes = 0
+        var maxFilled = 0
+        var blocked: [Int: Int] = [:]
     }
 
-    public func fill(rng: inout SplitMix64) throws -> FillOutcome {
+    /// Letzter Suchverlauf — nur für Diagnose, nicht Teil des Ergebnisses.
+    public final class TraceBox: @unchecked Sendable {
+        public var trace = FillTrace()
+        public init() {}
+    }
+
+    public func fill(rng: inout SplitMix64, trace: TraceBox? = nil) throws -> FillOutcome {
         let slots = topology.slots
         var masks: [Bitset] = []
         masks.reserveCapacity(slots.count)
@@ -87,6 +110,11 @@ public struct FillEngine {
         var rngCopy = rng
         let ok = solve(&state, masks: masks, maxProperNouns: maxProperNouns, rng: &rngCopy)
         rng = rngCopy
+        if let trace {
+            trace.trace.nodes = state.nodes
+            trace.trace.maxFilled = state.maxFilled
+            trace.trace.blockedBySlot = state.blocked
+        }
         guard ok else {
             throw FillError.budgetExhausted(nodes: state.nodes, filled: state.filled,
                                             total: slots.count)
@@ -169,19 +197,79 @@ public struct FillEngine {
         return keyed.prefix(branchLimit).map(\.1)
     }
 
+    /// Bewertet Kandidaten danach, wie viel Spielraum sie den Kreuzungen lassen.
+    ///
+    /// Maximiert das **Minimum** der verbleibenden Kandidatenzahlen — ein Zug,
+    /// der irgendeinem Nachbarn nur noch zwei Wörter lässt, ist gefährlicher als
+    /// einer, der allen dreißig lässt. Nur die vordersten `lcvWidth` Kandidaten
+    /// werden bewertet; alles zu bewerten kostet mehr, als es einbringt.
+    private func rankByLeastConstraining(_ pool: [Int], slot: Slot, slotIndex: Int,
+                                        state: State, masks: [Bitset], maxProperNouns: Int,
+                                        idx: PatternIndex.LengthIndex) -> [Int] {
+        let crossingsHere = crossings[slotIndex].filter { state.assigned[$0.other] < 0 }
+        guard !crossingsHere.isEmpty, pool.count > 1 else { return pool }
+        let width = min(pool.count, lcvWidth)
+
+        var scored: [(score: Int, total: Int, local: Int)] = []
+        scored.reserveCapacity(width)
+        var probe = state
+        for local in pool.prefix(width) {
+            let letters = idx.letters[local]
+            var written: [Int] = []
+            for i in 0 ..< slot.length {
+                let ci = topology.size.index(slot.cell(at: i))
+                if probe.cellLetters[ci] == nil {
+                    probe.cellLetters[ci] = letters[i]
+                    written.append(ci)
+                }
+            }
+            var minRemaining = Int.max
+            var total = 0
+            for cross in crossingsHere {
+                let n = candidates(cross.other, probe, masks, maxProperNouns: maxProperNouns).count
+                minRemaining = min(minRemaining, n)
+                total += n
+                if minRemaining == 0 { break }
+            }
+            for ci in written { probe.cellLetters[ci] = nil }
+            if minRemaining > 0 { scored.append((minRemaining, total, local)) }
+        }
+        guard !scored.isEmpty else { return Array(pool.dropFirst(width)) }
+        scored.sort {
+            if $0.score != $1.score { return $0.score > $1.score }
+            if $0.total != $1.total { return $0.total > $1.total }
+            return $0.local < $1.local
+        }
+        // Bewertete zuerst, danach der unbewertete Rest als Rückfallebene.
+        return scored.map(\.local) + pool.dropFirst(width)
+    }
+
     private func solve(_ state: inout State, masks: [Bitset], maxProperNouns: Int,
                        rng: inout SplitMix64) -> Bool {
         if state.filled == topology.slots.count { return true }
         if state.nodes > profile.nodeBudget { return false }
 
         guard let pick = pickSlot(state, masks, maxProperNouns: maxProperNouns) else { return false }
-        if pick.candidates.isEmpty { return false }
+        if pick.candidates.isEmpty {
+            state.blocked[topology.slots[pick.slot].id, default: 0] += 1
+            return false
+        }
 
         let slot = topology.slots[pick.slot]
         let idx = index.lengths[slot.length]!
         let salt = rng.next()
 
-        for local in order(pick.candidates, length: slot.length, salt: salt) {
+        // **Least-Constraining-Value.** Vorher wurden die Kandidaten praktisch
+        // zufällig durchprobiert (Zipf-Korb plus Streuschlüssel) — die Suche kam
+        // damit auf etwa 60 % der Slots und blieb stehen. Jetzt wird unter den
+        // aussichtsreichsten Kandidaten der gewählt, der den kreuzenden Slots am
+        // meisten Kandidaten übrig lässt. Das ist die Standardheuristik für
+        // Kreuzwortfüller und der Unterschied zwischen „kommt weit" und „fertig".
+        let raw = order(pick.candidates, length: slot.length, salt: salt)
+        let ranked = rankByLeastConstraining(raw, slot: slot, slotIndex: pick.slot,
+                                             state: state, masks: masks,
+                                             maxProperNouns: maxProperNouns, idx: idx)
+        for local in ranked {
             state.nodes += 1
             if state.nodes > profile.nodeBudget { return false }
 
@@ -198,6 +286,7 @@ public struct FillEngine {
             state.assigned[pick.slot] = local
             state.used[slot.length]!.set(local)
             state.filled += 1
+            if state.filled > state.maxFilled { state.maxFilled = state.filled }
             let isProper = idx.flags[local].contains(.properNoun)
             if isProper { state.properNouns += 1 }
 

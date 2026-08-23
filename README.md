@@ -110,7 +110,7 @@ swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slo
 | M1 `PuzzleKit`-Kern, Layout-Seam, Templatesuche, Seam-Scans | ✅ |
 | M2 Katalogpipeline, drei Quellen, Abdeckungsreport | ✅ |
 | M3 Füll-Engine, `classic`-Generator, CLI | ✅ |
-| M4 `ArrowLayout` (Schwedenrätsel) | teilweise — Layout ja, Füllen nein |
+| M4 `ArrowLayout` (Schwedenrätsel), alle vier Stufen | ✅ |
 | M5–M6 App, beide Varianten spielbar | offen |
 | M7 Game Center · M8 CloudKit + Handoff + Widgets | offen |
 | M9 tvOS · M10 watchOS · M11 Barrierefreiheit, Lokalisierung | offen |
@@ -126,18 +126,26 @@ brauchen Wortlisten in der Größenordnung 50.000 pro Band — deshalb sind die
 Gitter hier bewusst nicht voll verzahnt (siehe `DifficultyProfile`). Der
 nächstgrößte Hebel ist mehr Vokabular, nicht mehr Suchheuristik.
 
-**`arrow`: Layout steht, Füllen noch nicht.** Für Mittel, Schwer und Experte
-liefert `ArrowLayout` gültige Topologien (Test-Suite `ArrowLayout`). Das
-anschließende Füllen scheitert bisher am Breitenbudget der Kurzclues: es ist
-korrekt als Füll-Constraint verdrahtet, verkleinert den Kandidatenpool aber
-zusätzlich zum Schwierigkeitsband.
+**Kurzfragen sind manchmal zu vage.** Sie entstehen durch Kürzen der Langform,
+und das kann die Trennschärfe kosten: „EIS — Wasser" ist formal eindeutig (kein
+anderer Dreibuchstaber im Katalog hat genau diese Kurzform), als Frage aber
+schwach. Das Ambiguitätsgatter greift erst bei drei Antworten gleicher Länge mit
+identischem Text; für Kurzfragen wäre eine Schwelle von zwei richtiger. Ebenso
+fehlt eine Wortart-Prüfung: ein Adjektiv wie AUFFÄLLIG bekommt gelegentlich eine
+Substantiv-Kurzfrage („Aufmerksamkeit").
 
-**`arrow/leicht`: Slot-Graph zerfällt.** Die Platzierung bewertet den
-Zusammenhang des Slot-Graphen nicht — nur den der Buchstabenzellen. Ihn in die
-Verstoßsumme aufzunehmen kostet je Bewertung eine `Topology`-Konstruktion und
-trieb die Platzierung von Sekunden auf Minuten. Der richtige Weg ist eine
-inkrementelle Zusammenhangsprüfung direkt auf den Läufen. Als `withKnownIssue`
-im Test geführt, damit die Lücke sichtbar bleibt.
+**Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf
+9×11 scheitert oft; der Generator kommt durch, weil er bis `maxAttempts` mal mit
+abgeleiteten Seeds neu ansetzt. Die Testsuite prüft genau diese Zusage. Eine
+verlässlichere Platzierung braucht eine inkrementelle Bewertung statt einer
+Neuberechnung je Zug.
+
+**Die Wertreihenfolge war der Hebel beim Füllen.** Kandidaten praktisch zufällig
+zu probieren brachte die Suche bei Schwedenrätseln auf 60 % der Slots und dort
+zum Stehen — 500.000 Knoten ohne Ergebnis. Mit **Least-Constraining-Value**
+(nimm den Kandidaten, der den kreuzenden Slots am meisten Auswahl lässt) füllt
+dasselbe Rätsel in 7.500 Knoten. Wer hier weiter optimieren will, sollte bei der
+Wertreihenfolge anfangen, nicht bei den Budgets.
 
 **Templatevielfalt bei großen Gittern.** Die Suche findet für 15×15 nur eine
 Handvoll Muster (für 7×7 und 9×9 dutzende). Aufeinanderfolgende Experte-Rätsel
