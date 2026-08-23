@@ -1,6 +1,6 @@
 # Kreuzwort
 
-Native Rätsel-App für iOS, iPadOS, macOS, tvOS und watchOS mit **zwei Varianten** — klassisches
+Native Rätsel-App für iOS, iPadOS, macOS und tvOS mit **zwei Varianten** — klassisches
 Kreuzworträtsel und Schwedenrätsel (Fragen im Gitter, Pfeile) —, prozeduraler
 Rätselerzeugung, Game Center und geräteübergreifendem Spielstand.
 
@@ -100,7 +100,28 @@ jederzeit erneut gestartet werden.
 swift run -c release puzzlegen templates --count 24     # Schwarzfeldmuster suchen
 swift run -c release puzzlegen gen --difficulty schwer --seed 1
 swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slot
+swift run -c release puzzlegen sweep --seeds 100        # Erfolgsquote messen
 ```
+
+## Oberfläche ansehen
+
+```bash
+swift run -c release uishot --variant arrow --difficulty mittel
+swift run -c release KreuzwortMac                       # spielbar auf dem Mac
+```
+
+`uishot` rendert die Ansichten **headless** in PNGs unter `build/shots/` — drei
+Flächen (Schreibtisch, Handheld, Wohnzimmer) × hell/dunkel, plus Fragenliste und
+Abschlussbildschirm. Ein Build beweist, dass etwas kompiliert, nicht dass es
+aussieht; `ImageRenderer` schließt die Lücke ohne Simulator und deterministisch,
+und dieselbe Mechanik trägt später die Snapshot-Tests.
+
+Drei SwiftUI-Bausteine rendern dort **nicht** und sind deshalb bewusst vermieden
+oder gekapselt: `List` zeigt einen Platzhalter, `ScrollView` und `LazyVStack`
+bleiben leer (kein View-Host bzw. kein Sichtfenster), und `Menu` zeigt ebenfalls
+einen Platzhalter. Die Fragenliste ist darum in `ClueListContent` (testbar) und
+`ClueListView` (scrollbar) geteilt, und die Hilfen sind Symbolknöpfe statt eines
+Menüs.
 
 ## Stand
 
@@ -111,9 +132,10 @@ swift run -c release puzzlegen diag --difficulty mittel # Kandidatenpools je Slo
 | M2 Katalogpipeline, drei Quellen, Abdeckungsreport | ✅ |
 | M3 Füll-Engine, `classic`-Generator (alle vier Stufen), CLI | ✅ |
 | M4 `ArrowLayout` (Schwedenrätsel), alle vier Stufen | ✅ |
-| M5–M6 App, beide Varianten spielbar | offen |
+| M5 Spielansicht, beide Varianten, Scoring, Eingabe | teilweise — Logik und Ansicht ja, Persistenz und Startbildschirm offen |
+| M6 App-Targets für iOS/iPadOS | offen |
 | M7 Game Center · M8 CloudKit + Handoff + Widgets | offen |
-| M9 tvOS · M10 watchOS · M11 Barrierefreiheit, Lokalisierung | offen |
+| M9 tvOS · M10 Barrierefreiheit, Lokalisierung | offen |
 
 ## Bekannte Lücken
 

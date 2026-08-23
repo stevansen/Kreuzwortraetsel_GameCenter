@@ -1,5 +1,7 @@
 # Build
 .build/
+# Gerenderte Ansichten — Artefakte von `uishot`, jederzeit neu erzeugbar.
+build/
 .swiftpm/
 DerivedData/
 *.xcodeproj/xcuserdata/

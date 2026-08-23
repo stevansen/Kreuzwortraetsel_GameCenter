@@ -150,7 +150,8 @@ func makeContext(_ args: Args) -> GenContext {
     let templates = loadTemplates(root.appendingPathComponent("Resources/grids/classic"))
     print("Templates: \(templates.count)")
     return GenContext(index: index,
-                      clues: CatalogClueSource(reader: reader),
+                      clues: CatalogClueSource(reader: reader,
+                                               widths: loadWidths(args.string("widths", "Resources/glyphwidths.json"))),
                       widths: loadWidths(args.string("widths", "Resources/glyphwidths.json")),
                       templates: templates)
 }

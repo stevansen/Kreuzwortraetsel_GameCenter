@@ -126,15 +126,17 @@ struct SeamScanTests {
         // Reine Import-Verzweigungen sind erlaubt — Verhalten gehört über
         // SurfaceCapabilities, weil die Fähigkeiten auch innerhalb einer
         // Plattform variieren (iPad mit und ohne Tastatur).
+        // Über `codeLines`, nicht über die Rohzeilen: dieser Scan hat sich sonst
+        // an seiner eigenen Dokumentation gefangen — `SurfaceCapabilities`
+        // erklärt im Kommentar, warum `#if os(tvOS)` die falsche Antwort ist.
         var hits: [String] = []
         for (url, src) in Self.swiftFiles(under: "Packages/KreuzwortUI") {
-            let lines = src.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
-            for (i, line) in lines.enumerated() where line.contains("#if os(") {
-                let window = lines[(i + 1) ..< min(i + 4, lines.count)].joined(separator: " ")
+            let code = Self.codeLines(src)
+            for (i, (line, text)) in code.enumerated() where text.contains("#if os(") {
+                let window = code[(i + 1) ..< min(i + 4, code.count)]
+                    .map(\.1).joined(separator: " ")
                 let importOnly = window.contains("import") && !window.contains("func")
-                if !importOnly {
-                    hits.append("\(url.lastPathComponent):\(i + 1)")
-                }
+                if !importOnly { hits.append("\(url.lastPathComponent):\(line)") }
             }
         }
         #expect(hits.isEmpty, Comment(rawValue:
