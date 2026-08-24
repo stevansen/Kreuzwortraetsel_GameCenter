@@ -11,6 +11,11 @@ import PuzzleKit
 public struct GridView: View {
     let session: PuzzleSession
     let capabilities: SurfaceCapabilities
+    /// Welche Zelle den Fokus hat. Nur auf Flächen mit Fokus-Engine belegt: dort
+    /// bewegt die Fernbedienung den Fokus, und der Cursor folgt ihm. Auf allen
+    /// anderen Flächen setzt ein Tippen oder die Tastatur den Cursor, und dieser
+    /// Zustand bleibt leer.
+    @FocusState private var focusedCell: Cell?
     let onTap: (Cell) -> Void
 
     public init(session: PuzzleSession, capabilities: SurfaceCapabilities,
@@ -54,6 +59,21 @@ public struct GridView: View {
             .frame(width: Double(size.cols) * (side + 1),
                    height: Double(size.rows) * (side + 1))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        // Fokus bewegt den Cursor. Auf dem Fernseher ist das der ganze
+        // Navigationsweg: die Fernbedienung kennt nur Richtungen und
+        // „Auswählen", und die Fokus-Engine des Systems findet die Nachbarzelle
+        // besser als jede eigene Rechnung. Auf Flächen ohne Fokus-Engine bleibt
+        // `focusedCell` leer und dieser Zweig läuft nie.
+        .onChange(of: focusedCell) { _, new in
+            if let new { onTap(new) }
+        }
+        // Umgekehrt: springt der Cursor anders (Wortwechsel, Hinweis), zieht
+        // der Fokus nach. Sonst zeigt der Fernseher den Fokus an einer Stelle
+        // und den Cursor an einer anderen.
+        .onChange(of: session.caret.cell) { _, new in
+            guard capabilities.hasFocusEngine, focusedCell != new else { return }
+            focusedCell = new
         }
     }
 
@@ -102,6 +122,8 @@ public struct GridView: View {
                 .frame(width: side, height: side)
                 .contentShape(Rectangle())
                 .onTapGesture { onTap(cell) }
+                .focusable(capabilities.hasFocusEngine)
+                .focused($focusedCell, equals: cell)
                 .accessibilityLabel(accessibilityLabel(for: cell))
                 .accessibilityAddTraits(session.caret.cell == cell ? [.isSelected] : [])
         }

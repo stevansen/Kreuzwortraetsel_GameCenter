@@ -23,6 +23,7 @@ PRODUCTS = ["PuzzleKit", "ClueCatalog", "KreuzwortUI", "SyncKit", "GameServices"
 BUNDLE_ID = "com.kreuzwort.app"
 DEPLOY_IOS = "18.0"
 DEPLOY_MAC = "15.0"
+DEPLOY_TV = "18.0"
 
 
 def uid(name: str) -> str:
@@ -283,8 +284,13 @@ def main() -> None:
         "GCC_NO_COMMON_BLOCKS = YES",
         f"IPHONEOS_DEPLOYMENT_TARGET = {DEPLOY_IOS}",
         f"MACOSX_DEPLOYMENT_TARGET = {DEPLOY_MAC}",
+        f"TVOS_DEPLOYMENT_TARGET = {DEPLOY_TV}",
         "SDKROOT = auto",
-        'SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx"',
+        # tvOS gehört dazu, seit die Fernseh-Oberfläche existiert: Fokus im
+        # Gitter und Buchstaben auf dem Schirm. Ohne diesen Eintrag liesse sich
+        # das gar nicht bauen, und der Store-Eintrag hat eine tvOS-Version.
+        'SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx appletvos '
+        'appletvsimulator"',
         "SUPPORTS_MACCATALYST = NO",
         "SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO",
         "SWIFT_EMIT_LOC_STRINGS = YES",
@@ -301,6 +307,8 @@ def main() -> None:
         '"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Kreuzwort/Kreuzwort.entitlements',
         '"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Kreuzwort/Kreuzwort.entitlements',
         '"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Kreuzwort/Kreuzwort-macOS.entitlements',
+        '"CODE_SIGN_ENTITLEMENTS[sdk=appletvos*]" = Kreuzwort/Kreuzwort.entitlements',
+        '"CODE_SIGN_ENTITLEMENTS[sdk=appletvsimulator*]" = Kreuzwort/Kreuzwort.entitlements',
         "ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon",
         # KREUZWORT_CLOUDKIT ist hier ABSICHTLICH nicht gesetzt. Der Schalter
         # gehört zusammen mit dem iCloud-Entitlement gesetzt: ohne Entitlement
@@ -332,7 +340,10 @@ def main() -> None:
         'PRODUCT_NAME = "$(TARGET_NAME)"',
         "SWIFT_APPROACHABLE_CONCURRENCY = YES",
         "SWIFT_EMIT_LOC_STRINGS = YES",
-        'TARGETED_DEVICE_FAMILY = "1,2"',
+        # 1 iPhone, 2 iPad, 3 Apple TV. Ohne die 3 bietet Xcode keine
+        # tvOS-Ziele an — SUPPORTED_PLATFORMS allein genügt nicht, das Ziel
+        # blieb mit „Unable to find a destination" unauffindbar.
+        'TARGETED_DEVICE_FAMILY = "1,2,3"',
     ]
 
     def config(uid_key, name, extra, is_target):

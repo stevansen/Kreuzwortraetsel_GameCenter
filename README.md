@@ -1,6 +1,6 @@
 # Kreuzwort
 
-Native Rätsel-App für iOS, iPadOS und macOS (tvOS vorbereitet) mit **zwei Varianten** — klassisches
+Native Rätsel-App für iOS, iPadOS, macOS und tvOS mit **zwei Varianten** — klassisches
 Kreuzworträtsel und Schwedenrätsel (Fragen im Gitter, Pfeile) —, prozeduraler
 Rätselerzeugung, Game Center und geräteübergreifendem Spielstand.
 
@@ -268,7 +268,8 @@ Menüs.
 | M6 Xcode-Projekt für iOS/iPadOS/macOS, Lokalisierung de/en/it | ✅ |
 | M7 Game Center: Profil, Achievements, Leaderboards, Outbox | ✅ |
 | M8 Sync-Schicht, Deep Links, Handoff, Widget-Datenpfad | ✅ mit Einschränkung (siehe unten) |
-| M9 tvOS · M10 Barrierefreiheit, Lokalisierung | offen |
+| M9 tvOS-Oberfläche | fertig |
+| M10 Barrierefreiheit, Lokalisierung | offen |
 
 ## Bekannte Lücken
 
@@ -436,6 +437,27 @@ kleinen Schirmen übliche Praxis.
 
 Die klassische Variante ist von allem nicht betroffen — dort stehen die Fragen in
 einer Liste neben dem Gitter und dürfen umbrechen.
+
+**Die Fernbedienung ist auf dieser Maschine nicht prüfbar.** Die tvOS-Oberfläche
+ist gerendert und auf der Apple TV im Simulator gesehen — die **Bedienung** mit
+der Fernbedienung nicht. Der Simulator nimmt Tastendrücke nur über die
+Simulator-App an, und `osascript` hat hier keine Berechtigung dafür
+(„osascript ist nicht berechtigt, Tastatureingaben zu senden"). Verifiziert ist
+damit die Darstellung, nicht die Fokus-Navigation.
+
+Der Eingabeweg selbst ist geteilt: die Buchstabenleiste ruft dieselbe Umwandlung
+wie die Tastatur (`handleCharacter` → `.enter`), und die ist von Tests gedeckt.
+Ungeprüft bleibt die SwiftUI-Verdrahtung — ob der Fokus im Gitter wirklich zur
+Nachbarzelle wandert und der Cursor mitzieht. Das braucht einen Durchgang von
+Hand mit der Fernbedienung.
+
+Vier Fehler hat erst das echte Gerät gezeigt, alle behoben: `xcodebuild` fand
+kein tvOS-Ziel, weil `TARGETED_DEVICE_FAMILY` die 3 fehlte (`SUPPORTED_PLATFORMS`
+allein genügt nicht); die Buchstabenleiste lief mit zwei Reihen à 15 aus dem Bild
+und begann bei „C"; die Sprachnamen im Startbildschirm waren abgeschnitten, weil
+dort `maxWidth: 560` auf einem 1920 Punkte breiten Schirm stand; und die
+fokussierte Tageskachel schob sich über die Überschrift, weil die Fokus-Engine sie
+anhebt und 8 Punkte Abstand dafür zu wenig sind.
 
 **Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf
 9×11 scheitert oft; der Generator kommt durch, weil er bis `maxAttempts` mal mit

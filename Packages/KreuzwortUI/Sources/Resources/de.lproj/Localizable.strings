@@ -41,6 +41,7 @@
 "grid.clueCell.clue" = "Frage: %@, Pfeil %@";
 
 "action.questions" = "Fragen";
+"action.delete" = "Löschen";
 "action.revealLetter" = "Buchstabe zeigen";
 "action.revealWord" = "Wort zeigen";
 "action.check" = "Prüfen";

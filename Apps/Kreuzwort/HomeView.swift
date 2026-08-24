@@ -5,11 +5,28 @@ import KreuzwortUI
 /// Der Startbildschirm: Tagesrätsel, Weiterspielen, Varianten- und Stufenwahl.
 struct HomeView: View {
     let environment: AppEnvironment
+    let capabilities: SurfaceCapabilities
     let onPlay: (Puzzle, PuzzleProgress?) -> Void
+
+    /// Maße nach Betrachtungsabstand.
+    ///
+    /// Die feste Breite von 560 Punkten war auf dem Fernseher der Fehler: aus
+    /// drei Metern eine schmale Spalte am linken Rand, und die Sprachnamen im
+    /// Auswahlfeld abgeschnitten („Syste…", „Deuts…"). Der Abstand wächst
+    /// mit, weil die Fokus-Engine die gewählte Kachel **vergrößert** — mit 22
+    /// Punkten schob sie sich über die Überschrift darüber.
+    private var columnWidth: Double { capabilities.viewingDistance == .far ? 1100 : 560 }
+    private var sectionSpacing: Double { capabilities.viewingDistance == .far ? 44 : 22 }
+    /// Fernseher überscannen: Inhalt nicht an den Rand legen.
+    private var outerPadding: Double { capabilities.viewingDistance == .far ? 60 : 20 }
+    /// Abstand zwischen Überschrift und Inhalt einer Abteilung. Auf dem
+    /// Fernseher hebt die Fokus-Engine die gewählte Kachel nach oben an; mit 8
+    /// Punkten schob sie sich über die Überschrift „Tagesrätsel".
+    private var headingSpacing: Double { capabilities.viewingDistance == .far ? 26 : 8 }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: sectionSpacing) {
                 Text(loc: "home.title").font(.largeTitle.bold())
 
                 statsRow
@@ -18,7 +35,7 @@ struct HomeView: View {
                     resumeCard(resumable)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: headingSpacing) {
                     Text(loc: "home.daily").font(.headline)
                     HStack(spacing: 12) {
                         ForEach(PuzzleVariant.allCases, id: \.self) { variant in
@@ -27,7 +44,7 @@ struct HomeView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: headingSpacing) {
                     Text(loc: "home.newPuzzle").font(.headline)
                     Picker(Loc.string("home.variant"),
                            selection: Binding(get: { environment.variant },
@@ -56,8 +73,8 @@ struct HomeView: View {
 
                 languagePicker
             }
-            .padding(20)
-            .frame(maxWidth: 560)
+            .padding(outerPadding)
+            .frame(maxWidth: columnWidth)
         }
         .frame(maxWidth: .infinity)
     }

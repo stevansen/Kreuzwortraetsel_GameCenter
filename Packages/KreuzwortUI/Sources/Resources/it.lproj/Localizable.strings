@@ -41,6 +41,7 @@
 "grid.clueCell.clue" = "Definizione: %@, freccia %@";
 
 "action.questions" = "Definizioni";
+"action.delete" = "Elimina";
 "action.revealLetter" = "Mostra lettera";
 "action.revealWord" = "Mostra parola";
 "action.check" = "Verifica";

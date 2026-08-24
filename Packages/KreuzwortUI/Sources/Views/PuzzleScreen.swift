@@ -29,7 +29,7 @@ public struct PuzzleScreen: View {
 
     public var body: some View {
         Group {
-            if capabilities.hasPointer {
+            if capabilities.showsSideClueList {
                 HStack(alignment: .top, spacing: 16) {
                     playArea
                     ClueListView(session: session) { session.apply(.selectSlot($0)) }
@@ -83,6 +83,16 @@ public struct PuzzleScreen: View {
             ClueBarView(session: session,
                         onPrevious: { session.apply(.previousSlot) },
                         onNext: { session.apply(.nextSlot) })
+            // Buchstaben auf dem Schirm, wo es keine Tastatur gibt. Ohne diese
+            // Leiste ist die App auf dem Fernseher nicht spielbar — die gesamte
+            // Eingabe hing an `onKeyPress`, und die Fernbedienung liefert keine
+            // Zeichen.
+            if capabilities.needsOnScreenLetters {
+                // Dieselbe Umwandlung wie bei der Tastatur, damit es nur einen
+                // Weg von einem Zeichen zu einem Eintrag gibt.
+                LetterRailView(onLetter: { _ = handleCharacter(String($0)) },
+                               onDelete: { session.apply(.deleteBackward) })
+            }
             controls
         }
     }
@@ -108,7 +118,7 @@ public struct PuzzleScreen: View {
     /// Tap. Die Beschriftung bleibt für VoiceOver erhalten.
     private var controls: some View {
         HStack(spacing: 10) {
-            if !capabilities.hasPointer {
+            if !capabilities.showsSideClueList {
                 Button { showsClueList = true } label: {
                     Label { Text(loc: "action.questions") } icon: { Image(systemName: "list.bullet") }
                 }

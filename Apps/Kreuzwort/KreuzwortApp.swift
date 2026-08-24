@@ -99,7 +99,8 @@ struct RootView: View {
                         string: PuzzleLink(puzzle: session.puzzle).universalURLString)
                 }
             } else {
-                HomeView(environment: environment) { puzzle, progress in
+                HomeView(environment: environment,
+                         capabilities: capabilities) { puzzle, progress in
                     session = PuzzleSession(puzzle: puzzle, progress: progress,
                                             deviceID: environment.store?.deviceID ?? 1)
                 }

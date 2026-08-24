@@ -72,6 +72,22 @@ public struct SurfaceCapabilities: Sendable, Hashable {
     /// zusätzlich der einzige Weg, die Frage zu lesen.
     public var clueBarIsPrimary: Bool { !rendersInCellClues }
 
+    /// Steht die Fragenliste dauerhaft neben dem Gitter?
+    ///
+    /// Nicht an `hasPointer` gebunden, wie es zuerst war: der Fernseher hat
+    /// keinen Zeiger, aber die breiteste Fläche von allen — und weil dort keine
+    /// Fragen in den Zellen stehen, ist die Liste dort **wichtiger** als
+    /// irgendwo sonst. Sie hinter einem Blatt zu verstecken hieße, das Rätsel
+    /// unspielbar zu machen.
+    public var showsSideClueList: Bool { hasPointer || hasFocusEngine }
+
+    /// Braucht die Fläche Buchstaben auf dem Schirm?
+    ///
+    /// Die Fernbedienung liefert Fokusbewegung und „Auswählen", aber keine
+    /// Zeichen. Ohne Tastatur und mit Fokus-Engine ist eine Buchstabenleiste der
+    /// einzige Weg, überhaupt etwas einzutragen.
+    public var needsOnScreenLetters: Bool { !hasHardwareKeyboard && hasFocusEngine }
+
     /// Mindestkantenlänge einer Zelle in Punkten.
     public var minimumCellSide: Double {
         switch viewingDistance {
