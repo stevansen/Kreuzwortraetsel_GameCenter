@@ -269,7 +269,7 @@ Menüs.
 | M7 Game Center: Profil, Achievements, Leaderboards, Outbox | ✅ |
 | M8 Sync-Schicht, Deep Links, Handoff, Widget-Datenpfad | ✅ mit Einschränkung (siehe unten) |
 | M9 tvOS-Oberfläche | fertig |
-| M10 Barrierefreiheit, Lokalisierung | offen |
+| M10 Barrierefreiheit, Lokalisierung | fertig, zwei Befunde offen (siehe unten) |
 
 ## Bekannte Lücken
 
@@ -458,6 +458,41 @@ und begann bei „C"; die Sprachnamen im Startbildschirm waren abgeschnitten, we
 dort `maxWidth: 560` auf einem 1920 Punkte breiten Schirm stand; und die
 fokussierte Tageskachel schob sich über die Überschrift, weil die Fokus-Engine sie
 anhebt und 8 Punkte Abstand dafür zu wenig sind.
+
+**`catalogVersion` ist eine Schemaversion, kein Inhaltsabdruck.** Sie wird von
+Hand hochgezählt, geht aber in die `PuzzleID` ein — und der Kommentar an
+`CatalogSchema.version` sagt selbst, warum: „ein anderer Katalog aus demselben
+Seed erzeugt ein anderes Rätsel". Wer den Katalog-**Inhalt** ändert, ohne die
+Zahl zu erhöhen, verändert damit still jedes Rätsel zum selben Seed: Spielstände
+zeigen auf ein anderes Gitter, geteilte Links öffnen etwas anderes, und
+`Resources/seeds.txt` erklärt sich weiter für gültig, obwohl die geprüften Seeds
+gegen einen anderen Katalog geprüft wurden.
+
+Richtig wäre ein aus dem Inhalt abgeleiteter Abdruck (etwa SHA-256 über die
+sortierten Antworten und Clues) statt einer Zahl, die man vergessen kann. Bis
+dahin gilt: **jede Änderung am Katalog-Inhalt braucht einen Versionssprung und
+einen neuen `puzzlegen verify`-Lauf.**
+
+**Wartungsmarker aus dem Wiktionary: 191 Clues tragen „QS Bedeutungen".**
+Aufgefallen beim Rendern der Fragenliste in großer Schrift: „ABBRUCH — Ein
+Schaden, Beeinträchtigung QS Bedeutungen". „QS" steht für Qualitätssicherung und
+ist eine Wartungsnotiz der Autoren, keine Bedeutung. Der Fix ist eine Zeile in
+`Normalize.swift`, aber er ändert den Katalog-Inhalt — und damit hängt an ihm der
+Versionssprung und die Neuverifikation aller Seeds (bei classic/experte allein
+Stunden). Deshalb bewusst nicht nebenbei erledigt, sondern zusammen mit der
+nächsten Katalog-Runde.
+
+**Zwei Barrierefreiheits-Einstellungen ließen sich nicht prüfen.**
+„Ohne Farbe unterscheiden" ist als Umgebungsschlüssel **nur lesbar** — SwiftUI
+erlaubt kein Überschreiben, und `simctl ui` kennt die Einstellung nicht (nur
+`appearance`, `increase_contrast`, `content_size`). Ein `uishot`-Schalter dafür
+war gebaut und ist wieder entfernt, weil er nicht funktionieren kann. Die Regel
+selbst ist eine einzeilige Bedingung in `GridView`. Dasselbe gilt für „Bewegung
+reduzieren".
+
+Prüfbar ist dagegen die **Textgröße**: `uishot --textsize accessibility5` rendert
+jeden Bildschirm in der größten Stufe. Geprüft und in Ordnung: Handheld-Layout,
+Frageleiste (bricht auf zwei Zeilen), Fragenliste und Abschlussbildschirm.
 
 **Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf
 9×11 scheitert oft; der Generator kommt durch, weil er bis `maxAttempts` mal mit

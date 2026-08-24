@@ -77,3 +77,5 @@
 "home.streak" = "Serie";
 "home.gameCenter" = "Game Center";
 "home.pending" = "In attesa di accesso";
+"home.daily.accessibility" = "Gioca lo schema del giorno %@";
+"home.resume.accessibility" = "Riprendi: %1$@ %2$@, %3$ld per cento risolto";

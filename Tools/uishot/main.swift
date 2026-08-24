@@ -35,11 +35,31 @@ func die(_ m: String) -> Never {
     exit(1)
 }
 
+/// Textgröße für den Durchlauf. `nil` heißt Standard.
+///
+/// Barrierefreiheit lässt sich nicht behaupten, sie muss zu sehen sein: mit
+/// `--textsize accessibility3` rendert derselbe Bildschirm in der Größe, die ein
+/// Nutzer mit eingeschränkter Sehkraft einstellt. Was dort abgeschnitten wird
+/// oder überlappt, ist ein Fehler — und headless findet man ihn in Sekunden
+/// statt am Gerät.
+/// In `main.swift` darf eine Variable auf oberster Ebene keinen Global-Actor
+/// tragen — deshalb ein Namensraum.
+enum Shot {
+    @MainActor static var textSize: DynamicTypeSize = .large
+    // Kein Schalter für „Ohne Farbe unterscheiden": der Umgebungsschlüssel
+    // `accessibilityDifferentiateWithoutColor` ist **nur lesbar**, SwiftUI
+    // erlaubt kein Überschreiben, und `simctl ui` kennt die Einstellung
+    // ebenfalls nicht (nur appearance, increase_contrast, content_size). Der
+    // Zustand ist damit auf dieser Maschine nicht prüfbar — die Regel dafür
+    // steht in GridView und ist eine einzeilige Bedingung.
+}
+
 @MainActor
 func render(_ view: some View, size: CGSize, scheme: ColorScheme, to path: String) throws {
     let renderer = ImageRenderer(content:
         view.frame(width: size.width, height: size.height)
             .environment(\.colorScheme, scheme)
+            .environment(\.dynamicTypeSize, Shot.textSize)
             .background(scheme == .dark ? Color.black : Color.white))
     renderer.scale = 2
     guard let image = renderer.nsImage,
@@ -55,6 +75,18 @@ func run() throws {
     let args = Args(Array(CommandLine.arguments.dropFirst()))
     // Sprache erzwingen, damit sich alle drei Fassungen ansehen lassen.
     Loc.forcedLanguage = args.flags["lang"]
+    if let name = args.flags["textsize"] {
+        let sizes: [String: DynamicTypeSize] = [
+            "large": .large, "xxxLarge": .xxxLarge,
+            "accessibility1": .accessibility1, "accessibility2": .accessibility2,
+            "accessibility3": .accessibility3, "accessibility4": .accessibility4,
+            "accessibility5": .accessibility5,
+        ]
+        guard let size = sizes[name] else {
+            die("Textgröße? \(name) — erlaubt: \(sizes.keys.sorted().joined(separator: ", "))")
+        }
+        Shot.textSize = size
+    }
     let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
     let outDir = args.str("out", "build/shots")
     try? FileManager.default.createDirectory(atPath: outDir, withIntermediateDirectories: true)
@@ -97,6 +129,8 @@ func run() throws {
     ]
     let stem = "\(variant.rawValue)-\(difficulty.rawValue)"
         + (args.flags["lang"].map { "-\($0)" } ?? "")
+        + (args.flags["textsize"].map { "-\($0)" } ?? "")
+
 
     for (name, caps, size) in surfaces {
         let session = PuzzleSession(puzzle: puzzle)

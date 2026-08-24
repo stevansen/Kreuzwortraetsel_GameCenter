@@ -77,3 +77,5 @@
 "home.streak" = "Serie";
 "home.gameCenter" = "Game Center";
 "home.pending" = "Meldungen warten auf Anmeldung";
+"home.daily.accessibility" = "Tagesrätsel %@ spielen";
+"home.resume.accessibility" = "Fortsetzen: %1$@ %2$@, %3$ld Prozent gelöst";

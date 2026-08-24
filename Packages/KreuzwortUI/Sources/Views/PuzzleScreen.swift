@@ -11,6 +11,7 @@ public struct PuzzleScreen: View {
     @State private var session: PuzzleSession
     @State private var showsClueList = false
     private let capabilities: SurfaceCapabilities
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let onNextPuzzle: () -> Void
     /// Wird genau einmal gerufen, wenn das Rätsel gelöst ist.
     ///
@@ -46,7 +47,11 @@ public struct PuzzleScreen: View {
                     .background(.background.opacity(0.96),
                                 in: RoundedRectangle(cornerRadius: 18))
                     .shadow(radius: 20)
-                    .transition(.scale.combined(with: .opacity))
+                    // „Bewegung reduzieren" ist keine Geschmacksfrage: Skalieren
+                    // löst bei vestibulären Beschwerden Schwindel aus. Die
+                    // Einblendung bleibt, das Wachsen entfällt.
+                    .transition(reduceMotion ? .opacity
+                                             : .scale.combined(with: .opacity))
             }
         }
         .sheet(isPresented: $showsClueList) {

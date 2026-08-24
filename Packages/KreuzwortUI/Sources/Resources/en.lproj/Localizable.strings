@@ -76,3 +76,5 @@
 "home.streak" = "Streak";
 "home.gameCenter" = "Game Center";
 "home.pending" = "Submissions waiting for sign-in";
+"home.daily.accessibility" = "Play today's %@ puzzle";
+"home.resume.accessibility" = "Resume: %1$@ %2$@, %3$ld percent solved";

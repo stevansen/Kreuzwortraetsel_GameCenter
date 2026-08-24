@@ -108,6 +108,11 @@ struct HomeView: View {
             Text(value).font(.title3.bold().monospacedDigit())
             Text(loc: key).font(.caption2).foregroundStyle(.secondary)
         }
+        // Ohne Zusammenfassung liest VoiceOver „0", „0", „0", „Punkte",
+        // „Gelöst", „Serie" — sechs Elemente, aus denen sich nicht erschließen
+        // lässt, welche Zahl zu welchem Wort gehört.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Loc.string(key)): \(value)")
     }
 
     private func resumeCard(_ progress: PuzzleProgress) -> some View {
@@ -121,6 +126,12 @@ struct HomeView: View {
                 ProgressView(value: progress.completion(letterCells: max(progress.cells.count, 1)))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Loc.string(
+                "home.resume.accessibility",
+                progress.variant.displayName, progress.difficulty.displayName,
+                Int((progress.completion(letterCells: max(progress.cells.count, 1)) * 100)
+                    .rounded())))
             .padding(14)
             .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         }
@@ -137,6 +148,11 @@ struct HomeView: View {
                 Text(loc: "home.dailyHint").font(.caption).foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Die Kachel ist ein Knopf; VoiceOver soll den Zweck ansagen und
+            // nicht zwei Textzeilen hintereinander.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Loc.string("home.daily.accessibility",
+                                           variant.displayName))
             .padding(12)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
         }

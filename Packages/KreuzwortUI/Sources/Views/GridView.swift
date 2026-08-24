@@ -158,6 +158,8 @@ public struct GridView: View {
 }
 
 struct LetterCellView: View {
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
     let state: CellState
     let number: Int?
     let isCaret: Bool
@@ -197,6 +199,18 @@ struct LetterCellView: View {
             }
             if isCaret {
                 Rectangle().strokeBorder(.tint, lineWidth: max(2, side * 0.07))
+            }
+            // Das aktive Wort war der letzte Zustand, der **nur** über Farbe
+            // ging (Tint mit 10 % Deckung). Bei „Ohne Farbe unterscheiden" war
+            // es damit unsichtbar. Ein dünner Streifen am unteren Rand zeigt es
+            // ohne Farbe an; der Cursor bleibt der volle Rahmen, die beiden
+            // sind also weiter zu trennen.
+            if isActiveWord, !isCaret, differentiateWithoutColor {
+                VStack {
+                    Spacer(minLength: 0)
+                    Rectangle().fill(.primary.opacity(0.55))
+                        .frame(height: max(1.5, side * 0.06))
+                }
             }
         }
     }
