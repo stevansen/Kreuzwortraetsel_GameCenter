@@ -27,11 +27,15 @@ LEADERBOARDS = [
      "DESC", "INTEGER"),
     ("weekly_points", "Punkte diese Woche", "Points this week", "Punti settimanali",
      "DESC", "INTEGER"),
-    ("fastest_expert_classic", "Schnellstes Experte klassisch",
-     "Fastest expert classic", "Esperto classico più veloce",
+    # Namen höchstens 30 Zeichen. „Schnellstes Experte Schwedenrätsel" waren 34
+    # und wurden abgelehnt — in einer Bash-Schleife mit Ausgabe nach /dev/null
+    # fiel das nicht auf, und die Bestenliste stand danach nur auf Englisch da.
+    # Die Doppelpunkt-Form ist kurz und in allen drei Sprachen symmetrisch.
+    ("fastest_expert_classic", "Experte: klassisch",
+     "Expert: classic", "Esperto: classico",
      "ASC", "ELAPSED_TIME_CENTISECOND"),
-    ("fastest_expert_arrow", "Schnellstes Experte Schwedenrätsel",
-     "Fastest expert arrow", "Schema svedese esperto più veloce",
+    ("fastest_expert_arrow", "Experte: Schwedenrätsel",
+     "Expert: arrow puzzle", "Esperto: schema svedese",
      "ASC", "ELAPSED_TIME_CENTISECOND"),
 ]
 
@@ -80,8 +84,30 @@ def find_app():
     return data["data"][0]["id"]
 
 
+NAME_LIMIT = 30
+
+
+def check_names():
+    """Namen vor dem Senden prüfen. Die API antwortet sonst mit einer 409, und
+    wer die Antwort nicht liest, merkt es nie."""
+    problems = []
+    for vid, de, en, it, _, _ in LEADERBOARDS:
+        for locale, name in (("de", de), ("en", en), ("it", it)):
+            if len(name) > NAME_LIMIT:
+                problems.append(f"{vid}/{locale}: {len(name)} > {NAME_LIMIT}")
+    for vid, _, name, _ in ACHIEVEMENTS:
+        if len(name) > NAME_LIMIT:
+            problems.append(f"{vid}: {len(name)} > {NAME_LIMIT}")
+    return problems
+
+
 def main():
     anlegen = "--anlegen" in sys.argv
+    if problems := check_names():
+        print("Namen zu lang:")
+        for p in problems:
+            print("  " + p)
+        return 1
     app_id = find_app()
     if not app_id:
         print(f"Kein App-Eintrag für {BUNDLE_ID}.")
