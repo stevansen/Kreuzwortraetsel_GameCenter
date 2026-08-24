@@ -402,28 +402,39 @@ Der Engpass ist derselbe wie überall in diesem Abschnitt: der Kurzfragen-Pool.
 arrow/leicht wählt aus 151 bis 217 Wörtern je Länge. Wer die Zuverlässigkeit auf
 100 % bringen will, braucht mehr Kurzfragen — nicht mehr Suchheuristik.
 
-**Fragen in Schwedenrätsel-Zellen brechen mitten im Wort.** Sichtbar erst im
-gerenderten Rätsel auf dem iPhone: „Möbelstü ck", „Flüssigkei t", „Sprechweis e",
-„Abk. für Bundesautobahn tankstelle". Zwei Ursachen, die getrennt gehören:
+**Fragen in Schwedenrätsel-Zellen: Wortbrüche behoben, Kürzung bleibt.**
+Im gerenderten Rätsel stand „Möbelstü ck", „Flüssigkei t", „Sprechweis e" — SwiftUI
+brach lange deutsche Wörter ohne Trennstrich. Zwei getrennte Ursachen:
 
-1. `GridView` hatte `minimumScaleFactor(0.5)`. SwiftUI zwang damit jede Frage in
-   die Zelle, indem es sie auf die halbe Größe schrumpfte — der Breiten-Etat aus
-   dem Katalog war wirkungslos, und die Schrift wurde unlesbar. Jetzt 0,8. Das
-   ist eine **Grenze, keine Lösung**: was nicht passt, wird sichtbar gekürzt.
-2. Die eigentliche Ursache: der Etat im Katalog (`singleClueBudget`,
-   `doubleClueBudget`) beschreibt die **Gesamtbreite** eines Textes, nicht die
-   Zeilenbreite der Zelle, in der er landet. Ein einzelnes langes Wort passt
-   deshalb in den Etat und trotzdem in keine Zeile. Solange beides nicht
-   verbunden ist, bleiben Brüche und Kürzungen.
+*Erstens* `minimumScaleFactor(0.5)`: SwiftUI zwang jede Frage in die Zelle, indem
+es sie auf die halbe Größe schrumpfte. Der Breiten-Etat aus dem Katalog war damit
+wirkungslos und die Schrift unlesbar. Jetzt 0,8.
 
-Der Weg dorthin: die Zellenbreite aus der Topologie an die Fragenauswahl
-weitergeben und ein Wort, das keine Zeile füllt, als Ausschlusskriterium führen —
-nicht als Vorliebe, wie es `CatalogClueSource` heute tut. Eine erste Schätzung
-der Kosten („ein Drittel des Etats ist die Zeile") ergab 90 % Ausfall und ist
-damit als Modell widerlegt, nicht als Messung brauchbar. Die Zeilenbreite muss
-aus der Geometrie kommen.
+*Zweitens* die fehlende Trennung. Der Etat einer Doppelzelle ist 9.500
+Tausendstel-Em auf zwei Zeilen — 4,75 Em je Zeile, bei deutschem Text etwa neun
+Zeichen. „Möbelstück" hat zehn. Ein hartes Kriterium „längstes Wort passt in eine
+Zeile" hätte rund 90 % des Doppelzellen-Pools verworfen: die Zelle ist zu schmal
+für die Sprache, nicht der Katalog zu schlecht. Gelöst wird es deshalb im
+Renderer, mit weichen Trennzeichen aus den Sprachdaten des Systems
+(`CFStringGetHyphenationLocationBeforeIndex`, siehe `Hyphenation.swift`). Aus
+„Möbelstü ck" wird „Möbel-stück", aus „Bundeskanzleramt" „Bundes-kanzleramt".
 
-Die klassische Variante ist davon nicht betroffen: dort stehen die Fragen in
+**Was bleibt: zu lange Fragen werden in der Zelle gekürzt** („Randbe-reich
+zwische…"). Zwei Zeilen à 4,75 Em fassen nicht zuverlässig 9,5 Em Text, weil beim
+Umbrechen Platz verlorengeht. Zwei Auswege sind gemessen und beide bezahlt:
+
+* **Etat kürzen** kostet unverhältnismäßig viel: −20 % Breite bedeutet −30 % Pool
+  (Länge 6: 533 → 381 Antworten für arrow/mittel). Dieselbe Größenordnung hatte
+  vorher zwei Kombinationen unfüllbar gemacht.
+* **Kleinere Gitter auf dem Telefon** ist durch die Architektur ausgeschlossen:
+  das Tagesrätsel ist weltweit dasselbe, die Gittergröße darf also nicht vom
+  Gerät abhängen.
+
+Deshalb bleibt die Kürzung, und sie ist vertretbar: die Frageleiste unter dem
+Gitter zeigt die ausgewählte Frage vollständig. Das ist bei Schwedenrätseln auf
+kleinen Schirmen übliche Praxis.
+
+Die klassische Variante ist von allem nicht betroffen — dort stehen die Fragen in
 einer Liste neben dem Gitter und dürfen umbrechen.
 
 **Arrow-Topologien gelingen nicht bei jedem Seed.** Ein einzelner Anlauf auf

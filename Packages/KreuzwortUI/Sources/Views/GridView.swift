@@ -28,7 +28,10 @@ public struct GridView: View {
         var out: [Cell: [(ArrowKind, String)]] = [:]
         for e in session.puzzle.entries {
             guard let arrow = e.arrow, let owner = e.ownerCell else { continue }
-            out[owner, default: []].append((arrow, e.clueShortText ?? e.clueText))
+            // Trennstellen hier, nicht im Zellen-View: `body` läuft bei jeder
+            // Eingabe neu, die Trennung ist aber je Frage einmal nötig.
+            let clue = Hyphenation.hyphenated(e.clueShortText ?? e.clueText)
+            out[owner, default: []].append((arrow, clue))
         }
         return out.mapValues { $0.map { (arrow: $0.0, text: $0.1) } }
     }
