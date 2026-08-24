@@ -259,6 +259,14 @@ func cmdVerify(_ args: Args) {
 
     // Vorhandene Datei weiterführen, wenn die Versionen passen.
     var table: [String: [UInt64]] = [:]
+    // **Fehlschläge gehören auch gemerkt.** Der erste Anlauf merkte sich nur
+    // Erfolge. Beim Fortsetzen begann die Suche deshalb wieder bei Seed 1,
+    // übersprang die gefundenen und probierte genau die Seeds erneut, die vorher
+    // schon gescheitert waren: ein Lauf über drei Stunden verbrannte neun
+    // Versuche auf dieselben neun bekannten Fehlschläge und fand nichts Neues.
+    // Die Liste steht als Kommentarzeile in derselben Datei — der Parser
+    // überliest Kommentare, das Format bleibt also unverändert.
+    var failed: [String: Set<UInt64>] = [:]
     let catalogVersion = ctx.catalogVersion
     let generatorVersion = ctx.generatorVersion
     if let existing = try? String(contentsOfFile: outPath, encoding: .utf8),
@@ -272,12 +280,30 @@ func cmdVerify(_ args: Args) {
             }
         }
         print("vorhandene Liste übernommen: \(parsed.count) Seeds")
+        for line in existing.split(separator: "\n") where line.hasPrefix("# failed ") {
+            let fields = line.dropFirst("# failed ".count)
+                .split(separator: " ", omittingEmptySubsequences: true)
+            guard fields.count >= 3 else { continue }
+            let key = "\(fields[0])|\(fields[1])"
+            failed[key] = Set(fields.dropFirst(2).compactMap { UInt64($0) })
+        }
+        let known = failed.values.reduce(0) { $0 + $1.count }
+        if known > 0 { print("bekannte Fehlschläge übersprungen: \(known)") }
     }
 
     func write() {
         let seeds = VerifiedSeeds(generatorVersion: generatorVersion,
                                   catalogVersion: catalogVersion, table: table)
-        try? seeds.serialized().write(toFile: outPath, atomically: true, encoding: .utf8)
+        var text = seeds.serialized()
+        text += "# Bekannte Fehlschläge. Ein erneuter Aufruf überspringt sie,\n"
+        text += "# statt dieselben Seeds wieder zu probieren.\n"
+        for key in failed.keys.sorted() {
+            let parts = key.split(separator: "|")
+            guard parts.count == 2, let seeds = failed[key], !seeds.isEmpty else { continue }
+            text += "# failed \(parts[0]) \(parts[1]) "
+                + seeds.sorted().map { "\($0)" }.joined(separator: " ") + "\n"
+        }
+        try? text.write(toFile: outPath, atomically: true, encoding: .utf8)
     }
 
     for variantName in PuzzleVariant.allCases where onlyVariant == nil
@@ -293,13 +319,14 @@ func cmdVerify(_ args: Args) {
             let key = "\(variantName.rawValue)|\(difficulty.rawValue)"
             var found = table[key] ?? []
             let already = found.count
-            var tried = 0, failed = 0
+            var tried = 0, failureCount = 0
             let t0 = Date()
             var seed: UInt64 = 1
             while found.count < target, seed <= maxSeed,
                   Date().timeIntervalSince(t0) < maxSeconds {
                 defer { seed += 1 }
                 if found.contains(seed) { continue }
+                if failed[key]?.contains(seed) == true { continue }
                 tried += 1
                 do {
                     _ = try gen.generate(seed: seed, difficulty: difficulty)
@@ -307,13 +334,15 @@ func cmdVerify(_ args: Args) {
                     table[key] = found
                     write()
                 } catch {
-                    failed += 1
+                    failureCount += 1
+                    failed[key, default: []].insert(seed)
+                    write()
                 }
             }
             let secs = Date().timeIntervalSince(t0)
             let newly = found.count - already
             print("  \(variantName.rawValue)/\(difficulty.rawValue): "
-                + "\(found.count) Seeds (\(newly) neu, \(failed) Fehlschläge, "
+                + "\(found.count) Seeds (\(newly) neu, \(failureCount) Fehlschläge, "
                 + "\(fmt(secs, 1)) s)"
                 + (found.count < target ? "  ⚠︎ Ziel \(target) nicht erreicht" : ""))
         }
