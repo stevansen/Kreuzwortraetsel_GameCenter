@@ -459,28 +459,48 @@ dort `maxWidth: 560` auf einem 1920 Punkte breiten Schirm stand; und die
 fokussierte Tageskachel schob sich über die Überschrift, weil die Fokus-Engine sie
 anhebt und 8 Punkte Abstand dafür zu wenig sind.
 
-**`catalogVersion` ist eine Schemaversion, kein Inhaltsabdruck.** Sie wird von
-Hand hochgezählt, geht aber in die `PuzzleID` ein — und der Kommentar an
-`CatalogSchema.version` sagt selbst, warum: „ein anderer Katalog aus demselben
-Seed erzeugt ein anderes Rätsel". Wer den Katalog-**Inhalt** ändert, ohne die
-Zahl zu erhöhen, verändert damit still jedes Rätsel zum selben Seed: Spielstände
-zeigen auf ein anderes Gitter, geteilte Links öffnen etwas anderes, und
-`Resources/seeds.txt` erklärt sich weiter für gültig, obwohl die geprüften Seeds
-gegen einen anderen Katalog geprüft wurden.
+**`catalogVersion` ist jetzt ein Inhaltsabdruck.** Vorher war es eine von Hand
+gepflegte Zahl, die zugleich Schemaversion war — und das hatte stille Wirkung: wer
+den Katalog-Inhalt änderte und die Zahl vergaß, verschob jedes Rätsel zum selben
+Seed. Spielstände zeigten auf ein anderes Gitter, geteilte Links öffneten etwas
+anderes, und `seeds.txt` erklärte sich weiter für gültig.
 
-Richtig wäre ein aus dem Inhalt abgeleiteter Abdruck (etwa SHA-256 über die
-sortierten Antworten und Clues) statt einer Zahl, die man vergessen kann. Bis
-dahin gilt: **jede Änderung am Katalog-Inhalt braucht einen Versionssprung und
-einen neuen `puzzlegen verify`-Lauf.**
+Die beiden Begriffe sind jetzt getrennt:
 
-**Wartungsmarker aus dem Wiktionary: 191 Clues tragen „QS Bedeutungen".**
-Aufgefallen beim Rendern der Fragenliste in großer Schrift: „ABBRUCH — Ein
-Schaden, Beeinträchtigung QS Bedeutungen". „QS" steht für Qualitätssicherung und
-ist eine Wartungsnotiz der Autoren, keine Bedeutung. Der Fix ist eine Zeile in
-`Normalize.swift`, aber er ändert den Katalog-Inhalt — und damit hängt an ihm der
-Versionssprung und die Neuverifikation aller Seeds (bei classic/experte allein
-Stunden). Deshalb bewusst nicht nebenbei erledigt, sondern zusammen mit der
-nächsten Katalog-Runde.
+* `schemaVersion` — Version des Dateiformats, von Hand. Antwortet auf: *kann
+  dieser Leser die Datei lesen?*
+* `catalogVersion` — SHA-256 über die sortierten Antworten und Clues, gekappt auf
+  31 Bit. Antwortet auf: *ist es derselbe Katalog?* Geht in die `PuzzleID` ein und
+  lässt sich nicht vergessen.
+
+Zwei Wächter halten das zusammen: `ShippedCatalogTests` prüft, dass die
+ausgelieferte `seeds.txt` zum ausgelieferten Katalog passt und dass das Schema
+lesbar ist; `catalogbuild` gibt den Abdruck aus und weist beim Bauen darauf hin,
+dass die Seed-Liste danach neu erzeugt werden muss.
+
+**Veraltete Spielstände werden nicht mehr zum Fortsetzen angeboten.** Der Abdruck
+macht Versionswechsel zur Routine, und damit wurde ein latenter Fehler akut: ein
+Spielstand beschreibt nur Seed und Buchstaben, das Gitter entsteht daraus neu. Bei
+geändertem Katalog ist das ein anderes Gitter — die Buchstaben lägen in fremden
+Zellen. `mostRecentUnfinished(generatorVersion:catalogVersion:)` filtert solche
+Stände heraus. Gelöscht werden sie nicht: ein Rückbau kann sie wieder passend
+machen.
+
+**Der ausgelieferte Katalog ist keine WAL-Datenbank mehr.** Beim Schreiben läuft
+SQLite im WAL-Modus, das ist schnell — aber eine WAL-Datenbank braucht selbst zum
+**Lesen** Schreibzugriff auf ihre `-shm`-Datei, und im App-Bundle gibt es den
+nicht. Aufgefallen ist es im Test („database is locked" bei zwei gleichzeitigen
+Lesern), gefährlich wäre es auf dem Gerät. `finalizeForShipping` setzt am Ende des
+Baus auf `journal_mode = DELETE`, und `catalogbuild` entfernt die Begleitdateien —
+ausgeliefert wird eine einzige, überall lesbare Datei.
+
+**Wartungsmarker aus dem Wiktionary sind entfernt.** „QS" heißt
+Qualitätssicherung und ist eine Notiz an die Autoren; 191 Clues trugen sie bis ins
+Rätsel („ABBRUCH — Ein Schaden, Beeinträchtigung QS Bedeutungen"). Zwei Formen
+brauchten zwei Regeln: am Ende wird der Marker abgeschnitten, und wenn eine Frage
+mit ihm **anfängt**, besteht sie nur aus der Notiz („HERNEHMEN — QS Bedeutungen
+(österreichisch) siehe Ref-Duden") und wird verworfen — abschneiden hätte „siehe
+Ref-Duden" übriggelassen. Jetzt null Vorkommen.
 
 **Zwei Barrierefreiheits-Einstellungen ließen sich nicht prüfen.**
 „Ohne Farbe unterscheiden" ist als Umgebungsschlüssel **nur lesbar** — SwiftUI

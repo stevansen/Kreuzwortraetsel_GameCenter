@@ -85,8 +85,21 @@ public final class ProgressStore: @unchecked Sendable {
 
     /// Der angefangene, aber nicht gelöste Spielstand mit der neuesten Aktivität —
     /// die Grundlage der „Weiterspielen"-Karte.
-    public func mostRecentUnfinished() -> PuzzleProgress? {
-        all().first { $0.completedAtEpoch == nil && $0.filledCells > 0 }
+    public func mostRecentUnfinished(generatorVersion: Int? = nil,
+                                     catalogVersion: Int? = nil) -> PuzzleProgress? {
+        all().first {
+            guard $0.completedAtEpoch == nil, $0.filledCells > 0 else { return false }
+            // **Nur Stände, die zum heutigen Rätsel passen.** Ein Spielstand
+            // beschreibt nur Seed und Buchstaben; das Gitter wird daraus neu
+            // erzeugt. Hat sich Katalog oder Generator geändert, entsteht aus
+            // demselben Seed ein anderes Gitter — die Buchstaben landen dann in
+            // fremden Zellen. Vorher fiel das nicht auf, weil `catalogVersion`
+            // eine von Hand gepflegte Zahl war und sich praktisch nie änderte.
+            // Mit dem Inhaltsabdruck ändert sie sich bei jeder Katalogrunde.
+            if let generatorVersion, $0.generatorVersion != generatorVersion { return false }
+            if let catalogVersion, $0.catalogVersion != catalogVersion { return false }
+            return true
+        }
     }
 
     /// Zusammenführen statt überschreiben: liegt schon ein Stand vor, gewinnt

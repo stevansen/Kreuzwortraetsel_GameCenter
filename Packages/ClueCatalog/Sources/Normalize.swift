@@ -251,14 +251,64 @@ public struct ClueNormalizer: Sendable {
     /// Übriggebliebene Wikitext-Klammern. 33 Clues trugen sie bis in den Katalog
     /// („ABSCHIED — Auch bildlich; Plural selten}}"). Solcher Text ist nicht
     /// gekürzt schlecht, sondern kaputt — er wird verworfen, nicht geflickt.
+    /// Wartungsnotizen der Wiktionary-Autoren.
+    ///
+    /// „QS" heißt Qualitätssicherung und ist ein Hinweis **an die Autoren**, keine
+    /// Bedeutung. 191 Clues trugen den Marker bis in den Katalog und ins Rätsel:
+    /// „ABBRUCH — Ein Schaden, Beeinträchtigung QS Bedeutungen". Aufgefallen beim
+    /// Rendern der Fragenliste in großer Schrift.
+    ///
+    /// Der Marker steht am Ende, weil die Vorlage im Quelltext hinter der
+    /// Bedeutung steht. Entfernt wird deshalb ein Suffix, nicht jedes Vorkommen —
+    /// „QS" mitten in einem Satz könnte eine echte Abkürzung sein.
+    static let maintenanceMarkers = [
+        // Singular und Plural: „GINGER — Person mit roten Haaren QS Bedeutung"
+        // blieb beim ersten Anlauf stehen, weil nur die Pluralform in der Liste
+        // stand.
+        "QS Bedeutungen", "QS Bedeutung", "QS Herkunft", "QS Beispiele",
+        "QS Referenzen", "QS Aussprache", "QS Fehlend", "QS Unsicher",
+    ]
+
+    static func strippingMaintenanceMarkers(_ text: String) -> String {
+        var t = text
+        var changed = true
+        while changed {
+            changed = false
+            let trimmed = collapse(t)
+            for marker in maintenanceMarkers where trimmed.hasSuffix(marker) {
+                t = collapse(String(trimmed.dropLast(marker.count)))
+                changed = true
+                break
+            }
+            // Ein Marker kann ein Satzzeichen hinter sich lassen.
+            while let last = t.last, last == "," || last == ";" || last == "." {
+                t = collapse(String(t.dropLast()))
+                changed = true
+            }
+        }
+        return t
+    }
+
+    /// Besteht der Text **nur** aus einer Wartungsnotiz?
+    ///
+    /// Solche Einträge sind keine gekürzte Bedeutung, sondern gar keine:
+    /// „HERNEHMEN — QS Bedeutungen (österreichisch) siehe Ref-Duden",
+    /// „KUGELKETTE — QS Bedeutungen, siehe Wikipedia". Sie werden verworfen,
+    /// nicht beschnitten — vom Marker abzuschneiden bliebe „siehe Wikipedia".
+    static func isMaintenanceNote(_ text: String) -> Bool {
+        let t = collapse(text)
+        return maintenanceMarkers.contains { t.hasPrefix($0) }
+    }
+
     static func hasMarkupRemnants(_ text: String) -> Bool {
         text.contains("{{") || text.contains("}}") || text.contains("[[")
     }
 
     public func longText(from description: String) -> Result<String, Rejection> {
         guard !Self.hasMarkupRemnants(description) else { return .failure(.clueTooShort) }
-        var t = Self.collapse(
-            Self.strippingContextPrefix(description.replacingOccurrences(of: "\n", with: " ")))
+        guard !Self.isMaintenanceNote(description) else { return .failure(.clueTooShort) }
+        var t = Self.collapse(Self.strippingMaintenanceMarkers(
+            Self.strippingContextPrefix(description.replacingOccurrences(of: "\n", with: " "))))
         while t.hasSuffix(".") || t.hasSuffix(";") { t.removeLast() }
         t = Self.collapse(t)
         guard t.count >= 8 else { return .failure(.clueTooShort) }
@@ -391,7 +441,8 @@ public struct ClueNormalizer: Sendable {
         // Auch hier, nicht nur in `longText`: die Kandidaten aus späteren
         // Klauseln kommen an `longText` vorbei, und eine solche Klausel kann die
         // Grammatikangabe tragen („…, zumeist Plural: Dreck").
-        var t = Self.stripParentheticals(Self.strippingContextPrefix(long))
+        var t = Self.stripParentheticals(
+            Self.strippingMaintenanceMarkers(Self.strippingContextPrefix(long)))
         // **Eine Kurzfrage enthält keinen Doppelpunkt.** Das Marker-Vokabular
         // nachzutragen war Flickwerk: 1.603 Kurzformen trugen Etiketten, die kein
         // Grammatikwort enthalten („Christliche und jüdische Religion:", „Als

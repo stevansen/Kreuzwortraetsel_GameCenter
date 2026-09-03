@@ -40,6 +40,10 @@ final class AppEnvironment {
     /// Zur Bauzeit geprüfte Seeds. `nil`, wenn die Datei fehlt oder zu einem
     /// anderen Katalog gehört — dann wird blind gewählt wie vorher.
     private var verifiedSeeds: VerifiedSeeds?
+    /// Abdruck des geladenen Katalogs. Wird gebraucht, um veraltete Spielstände
+    /// auszusortieren — aus demselben Seed erzeugt ein anderer Katalog ein
+    /// anderes Gitter.
+    private var catalogVersion = 0
     private var widths: GlyphWidthTable = .bootstrap
     private(set) var store: ProgressStore?
     private var profileStore: ProfileStore?
@@ -70,10 +74,13 @@ final class AppEnvironment {
             index = PatternIndex(lexicon: lexicon)
             clues = CatalogClueSource(reader: reader, widths: widths)
             templates = Self.loadTemplates(in: resources.appendingPathComponent("grids/classic"))
+            catalogVersion = reader.catalogVersion
             verifiedSeeds = Self.loadVerifiedSeeds(
                 at: resources.appendingPathComponent("seeds.txt"),
                 catalogVersion: reader.catalogVersion)
-            resumable = store.mostRecentUnfinished()
+            resumable = store.mostRecentUnfinished(
+                generatorVersion: Generator.currentVersion,
+                catalogVersion: reader.catalogVersion)
 
             let profileStore = try ProfileStore()
             self.profileStore = profileStore
@@ -235,7 +242,8 @@ final class AppEnvironment {
 
     func persist(_ progress: PuzzleProgress) {
         try? store?.save(progress)
-        resumable = store?.mostRecentUnfinished()
+        resumable = store?.mostRecentUnfinished(
+            generatorVersion: Generator.currentVersion, catalogVersion: catalogVersion)
         writeSnapshot()
         if let sync { Task { await sync.push(progress: progress) } }
     }

@@ -48,11 +48,39 @@ public struct CatalogClue: Sendable {
 }
 
 public enum CatalogSchema {
-    /// Bei jeder Änderung erhöhen: die Version geht in die `PuzzleID` ein, weil
-    /// ein anderer Katalog aus demselben Seed ein anderes Rätsel erzeugt.
+    /// Version des **Dateiformats**: kann dieser Leser die Datei überhaupt lesen?
+    /// Von Hand erhöhen, wenn sich Tabellen oder Spalten ändern.
     ///
     /// 2: Wortart je Antwort, plus geschärfte Kurzclue-Gatter.
     public static let version = 2
+
+    /// Abdruck des **Inhalts** — die Zahl, die in die `PuzzleID` eingeht.
+    ///
+    /// Vorher war das dieselbe von Hand gepflegte Zahl wie die Schemaversion, und
+    /// das war ein Fehler mit stiller Wirkung: wer den Inhalt ändert und die Zahl
+    /// vergisst, verändert jedes Rätsel zum selben Seed. Spielstände zeigen dann
+    /// auf ein anderes Gitter, geteilte Links öffnen etwas anderes, und die
+    /// geprüfte Seed-Liste erklärt sich weiter für gültig, obwohl sie gegen einen
+    /// anderen Katalog geprüft wurde.
+    ///
+    /// Jetzt entsteht die Zahl aus dem Inhalt selbst und lässt sich nicht
+    /// vergessen. Eigenes SHA-256 statt `Hasher`, weil dessen Ergebnis je Prozess
+    /// anders ausfällt — dieselbe Regel wie im ganzen Generatorpfad.
+    ///
+    /// 31 Bit, damit die Zahl in jedem `Int` und in Textform kurz bleibt; die
+    /// Reihenfolge ist bedeutungslos, es geht um Identität, nicht um Rangfolge.
+    public static func contentFingerprint(answers: [CatalogAnswer],
+                                          cluesByAnswer: [String: [CatalogClue]]) -> Int {
+        var parts: [String] = ["schema:\(version)"]
+        for answer in answers.sorted(by: { $0.surface < $1.surface }) {
+            parts.append("a|\(answer.surface)|\(answer.zipf)|\(answer.flags.rawValue)"
+                + "|\(answer.wordClass)")
+            for clue in (cluesByAnswer[answer.surface] ?? []).sorted(by: { $0.text < $1.text }) {
+                parts.append("c|\(clue.text)|\(clue.shortText ?? "")|\(clue.tier)")
+            }
+        }
+        return Int(SHA256.seed(parts.joined(separator: "\n")) & 0x7FFF_FFFF)
+    }
 
     public static let ddl = """
     CREATE TABLE IF NOT EXISTS meta (
@@ -150,20 +178,49 @@ public final class CatalogWriter {
         return (nA, nC, nT)
     }
 
+    /// Schließt die Datei für die Auslieferung ab.
+    ///
+    /// Beim Schreiben läuft SQLite im WAL-Modus, das ist schnell. Ausgeliefert
+    /// wird aber eine Datei, die **nur gelesen** wird — und eine WAL-Datenbank
+    /// braucht selbst zum Lesen Schreibzugriff auf die `-shm`-Datei. Im
+    /// App-Bundle gibt es den nicht. Die Nebenwirkung war schon im Test zu sehen:
+    /// zwei gleichzeitige Leser bekamen „database is locked".
+    ///
+    /// Nach dem Umschalten auf `DELETE` verschwinden `-wal` und `-shm`, und die
+    /// ausgelieferte Datei ist ein einziges, überall lesbares Artefakt.
+    public func finalizeForShipping() throws {
+        try db.exec("PRAGMA wal_checkpoint(TRUNCATE);")
+        try db.exec("PRAGMA journal_mode = DELETE;")
+    }
+
     public func analyze() throws { try db.exec("ANALYZE;") }
 }
 
 /// Liest den Katalog und baut daraus das `Lexicon`, das `PuzzleKit` braucht.
 public final class CatalogReader {
     private let db: SQLiteDatabase
+    /// Abdruck des Inhalts. Geht in die `PuzzleID` ein.
     public let catalogVersion: Int
+    /// Version des Dateiformats.
+    public let schemaVersion: Int
 
     public init(path: String) throws {
         db = try SQLiteDatabase(path: path, readOnly: true, create: false)
-        var v = 0
-        let s = try db.prepare("SELECT value FROM meta WHERE key = 'catalogVersion'")
-        try s.query { v = Int($0.text(0)) ?? 0 }
-        catalogVersion = v
+        var content = 0
+        var schema = 0
+        let s = try db.prepare("SELECT key, value FROM meta "
+                               + "WHERE key IN ('catalogVersion', 'schemaVersion')")
+        try s.query { row in
+            switch row.text(0) {
+            case "catalogVersion": content = Int(row.text(1)) ?? 0
+            case "schemaVersion": schema = Int(row.text(1)) ?? 0
+            default: break
+            }
+        }
+        // Ältere Kataloge kannten nur `catalogVersion` und meinten damit das
+        // Schema. Fehlt `schemaVersion`, gilt der alte Wert als Schemaversion.
+        schemaVersion = schema == 0 ? content : schema
+        catalogVersion = content
     }
 
     /// Baut das Füllvokabular. Ein Wort ohne Clue kommt nicht vor — die

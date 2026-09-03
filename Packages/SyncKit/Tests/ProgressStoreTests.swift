@@ -11,13 +11,15 @@ struct ProgressStoreTests {
         return try ProgressStore(directory: dir, deviceID: deviceID)
     }
 
-    private func makePuzzle(seed: UInt64 = 1) -> Puzzle {
+    private func makePuzzle(seed: UInt64 = 1, generatorVersion: Int = 1,
+                            catalogVersion: Int = 1) -> Puzzle {
         let size = GridSize(rows: 3, cols: 3)
         let entry = Entry(slot: Slot(id: 0, start: Cell(0, 0), direction: .across, length: 3),
                           answerID: 1, answer: "BOT", clueID: 1, clueText: "Frage",
                           clueShortText: nil, number: 1, arrow: nil, ownerCell: nil)
         return Puzzle(seed: seed, variant: .classic, difficulty: .leicht,
-                      generatorVersion: 1, catalogVersion: 1, size: size,
+                      generatorVersion: generatorVersion,
+                      catalogVersion: catalogVersion, size: size,
                       layout: .classic(blocks: [Bool](repeating: false, count: 9)),
                       entries: [entry])
     }
@@ -89,6 +91,34 @@ struct ProgressStoreTests {
         let resume = try #require(store.mostRecentUnfinished())
         #expect(resume.puzzleID == open.puzzleID)
         #expect(store.count == 3)
+    }
+
+    @Test func staleProgressIsNotOfferedForResume() throws {
+        let store = try tempStore()
+        defer { try? FileManager.default.removeItem(at: store.directory) }
+
+        // Ein Stand aus einer früheren Katalogrunde. Er beschreibt nur Seed und
+        // Buchstaben — das Gitter entsteht daraus neu. Mit einem anderen Katalog
+        // ist das ein anderes Gitter, die Buchstaben lägen in fremden Zellen.
+        var old = PuzzleProgress(puzzle: makePuzzle(seed: 7, catalogVersion: 111),
+                                 deviceID: store.deviceID)
+        old.set(1, at: 0)
+        try store.save(old)
+
+        // Ohne Angabe wie bisher: der Stand kommt zurück.
+        #expect(store.mostRecentUnfinished()?.puzzleID == old.puzzleID)
+
+        // Mit dem heutigen Abdruck: nicht mehr.
+        #expect(store.mostRecentUnfinished(generatorVersion: 1, catalogVersion: 222) == nil)
+        // Generatorversion zählt genauso.
+        #expect(store.mostRecentUnfinished(generatorVersion: 2, catalogVersion: 111) == nil)
+        // Passt beides, wird er angeboten.
+        #expect(store.mostRecentUnfinished(generatorVersion: 1,
+                                           catalogVersion: 111)?.puzzleID == old.puzzleID)
+
+        // Und der Stand bleibt gespeichert — er wird nur nicht angeboten. Ein
+        // Rätsel kann später wieder passen, etwa nach einem Rückbau.
+        #expect(store.count == 1)
     }
 
     @Test func deleteRemovesTheEntry() throws {

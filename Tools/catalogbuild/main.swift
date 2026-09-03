@@ -116,8 +116,14 @@ func cmdBuild(_ a: Args) {
     do {
         let w = try CatalogWriter(path: output, fresh: true)
         let counts = try w.write(answers: answers, cluesByAnswer: clues)
+        // Der Abdruck entsteht aus dem geschriebenen Inhalt, nicht aus einer
+        // gepflegten Zahl: so kann eine Katalogänderung nicht mehr unbemerkt
+        // jedes Rätsel zum selben Seed verändern.
+        let fingerprint = CatalogSchema.contentFingerprint(answers: answers,
+                                                           cluesByAnswer: clues)
         try w.setMeta([
-            "catalogVersion": String(CatalogSchema.version),
+            "catalogVersion": String(fingerprint),
+            "schemaVersion": String(CatalogSchema.version),
             "locale": "de",
             "abbreviationsVersion": String(abbr.version),
             "widthTableFont": widths.fontName,
@@ -126,9 +132,23 @@ func cmdBuild(_ a: Args) {
             "frequencyCorpus": frequencies?.corpus ?? "none",
         ])
         try w.analyze()
+        try w.finalizeForShipping()
         print("geschrieben: \(counts.answers) Antworten, \(counts.clues) Clues, "
             + "\(counts.topics) Themenzuordnungen → \(output)")
+        print("Inhaltsabdruck (catalogVersion): \(fingerprint) · Schema "
+            + "\(CatalogSchema.version)")
+        print("⚠︎ Ändert sich der Abdruck, ist Resources/seeds.txt ungültig — "
+            + "`puzzlegen verify` erneut laufen lassen.")
     } catch { die("schreiben: \(error)") }
+
+    // Begleitdateien entfernen, **nachdem** der Schreiber freigegeben ist.
+    // Während des Schreibens läuft SQLite im WAL-Modus und legt `-wal` und
+    // `-shm` an; `finalizeForShipping` schaltet auf `DELETE` um, aber die
+    // Dateien bleiben als Überrest liegen. Ausgeliefert wird nur die eine Datei —
+    // im App-Bundle gibt es keinen Schreibzugriff für Begleitdateien.
+    for suffix in ["-wal", "-shm"] {
+        try? FileManager.default.removeItem(atPath: output + suffix)
+    }
 
     writeAttribution(report: report, output: output, corpus: frequencies?.corpus)
     printReport(report, singleBudget: arrow.singleClueBudget, doubleBudget: arrow.doubleClueBudget)
