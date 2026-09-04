@@ -271,6 +271,41 @@ Menüs.
 | M9 tvOS-Oberfläche | fertig |
 | M10 Barrierefreiheit, Lokalisierung | fertig, zwei Befunde offen (siehe unten) |
 
+## Stand der Einreichung
+
+Alle drei Plattformen sind am 4. September 2026 zur Prüfung eingereicht
+(`WAITING_FOR_REVIEW`): iOS 1.0 Build 1, macOS 1.0 Build 2, tvOS 1.0 Build 2.
+Build-Nummern gelten pro Plattform. Kostenlos, alle 175 Länder, Kategorie
+Spiele → Rätsel + Wort, Altersfreigabe 4+.
+
+Die Vorbereitung läuft über `scripts/asc.py` (signiert lokal ein ES256-Token) und
+darauf aufbauend `gamecenter-setup.py`, `gamecenter-images.py`,
+`store-metadata.py`, `store-screenshots.py`. Was die API **nicht** kann:
+
+* **Apps anlegen** — `The resource 'apps' does not allow 'CREATE'`.
+* **Den App-Datenschutz-Fragebogen** — die `appDataUsages`-Endpunkte antworten
+  einem App-Manager-Schlüssel mit 404, während alles andere 200 liefert.
+* **Verteilungsprofile über Cloud Signing** — `Cloud signing permission error`.
+  Die drei Profile sind deshalb ausdrücklich über `/v1/profiles` erzeugt.
+* **Leere Prüfvorgänge löschen** — 403. Einer steht ohne Plattform in der Liste
+  und blockiert nichts.
+
+**Die API nennt Einreichungs-Blocker nur pauschal** („This resource cannot be
+reviewed, please check associated errors to see why"). Die Weboberfläche benennt
+sie exakt; drei Runden waren nötig:
+
+| Blocker | Wo es steht |
+|---|---|
+| Prüfkontakt mit Telefonnummer im Format `+…` | `appStoreReviewDetails` |
+| Apple-TV-Datenschutzrichtlinie als **Text** — auf dem Fernseher öffnet sich kein Browser, die URL genügt dort nicht | `appInfoLocalizations.privacyPolicyText` |
+| Copyright je Version | `appStoreVersions.copyright` |
+| Rechte an Inhalten Dritter (Wiktionary CC BY-SA, Wikidata CC0) | `apps.contentRightsDeclaration` |
+| Ein **hängender** Screenshot: das italienische tvOS-Bild stand auf `UPLOAD_COMPLETE` statt `COMPLETE` | löschen und neu laden |
+
+Der letzte Punkt ist der lehrreichste: die eigene Kontrolle nach dem Upload hatte
+nur *gezählt*, wie viele Screenshot-Sätze existieren — der Zähler sagte „3 Sätze",
+und trotzdem war ein Bild unfertig. **Zustände abfragen, nicht Mengen.**
+
 ## Bekannte Lücken
 
 Ehrlich statt hübsch. Alles hier ist gemessen, nicht vermutet.
