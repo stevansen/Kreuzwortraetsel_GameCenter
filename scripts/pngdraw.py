@@ -20,22 +20,42 @@ ACCENT = (0xD8, 0x43, 0x2F)
 GOLD = (0xE0, 0xA8, 0x30)
 
 
+# Vollständig durchsichtig. Nur mit `alpha=True` sinnvoll.
+TRANSPARENT = (0, 0, 0, 0)
+
+
+def _rgba(color):
+    return color if len(color) == 4 else (*color, 255)
+
+
 class Canvas:
-    def __init__(self, size, background=GROUND):
+    """Zeichenfläche, wahlweise mit Alphakanal.
+
+    Alpha ist keine Spielerei: tvOS setzt sein App-Icon aus **Ebenen**
+    zusammen, und ohne Transparenz verdeckt die vorderste Ebene alle darunter —
+    das geschichtete Icon zeigte dann nur die oberste Schicht.
+    """
+
+    def __init__(self, size, background=GROUND, alpha=False, height=None):
         self.size = size
-        self.px = [[background] * size for _ in range(size)]
+        self.height = height or size
+        self.alpha = alpha
+        fill = _rgba(background) if alpha else background
+        self.px = [[fill] * size for _ in range(self.height)]
 
     # --- Grundformen ---
 
     def rect(self, x0, y0, x1, y1, color):
-        for y in range(max(0, int(y0)), min(self.size, int(y1))):
+        color = _rgba(color) if self.alpha else color
+        for y in range(max(0, int(y0)), min(self.height, int(y1))):
             row = self.px[y]
             for x in range(max(0, int(x0)), min(self.size, int(x1))):
                 row[x] = color
 
     def disc(self, cx, cy, r, color):
+        color = _rgba(color) if self.alpha else color
         rr = r * r
-        for y in range(max(0, int(cy - r)), min(self.size, int(cy + r) + 1)):
+        for y in range(max(0, int(cy - r)), min(self.height, int(cy + r) + 1)):
             row = self.px[y]
             dy2 = (y - cy) ** 2
             for x in range(max(0, int(cx - r)), min(self.size, int(cx + r) + 1)):
@@ -43,8 +63,9 @@ class Canvas:
                     row[x] = color
 
     def ring(self, cx, cy, r, thick, color):
+        color = _rgba(color) if self.alpha else color
         outer, inner = r * r, (r - thick) ** 2
-        for y in range(max(0, int(cy - r)), min(self.size, int(cy + r) + 1)):
+        for y in range(max(0, int(cy - r)), min(self.height, int(cy + r) + 1)):
             row = self.px[y]
             dy2 = (y - cy) ** 2
             for x in range(max(0, int(cx - r)), min(self.size, int(cx + r) + 1)):
@@ -74,9 +95,10 @@ class Canvas:
             return (struct.pack(">I", len(data)) + tag + data
                     + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF))
 
+        # Farbtyp 6 = RGBA, 2 = RGB.
         return (b"\x89PNG\r\n\x1a\n"
-                + chunk(b"IHDR", struct.pack(">IIBBBBB", self.size, self.size,
-                                             8, 2, 0, 0, 0))
+                + chunk(b"IHDR", struct.pack(">IIBBBBB", self.size, self.height,
+                                             8, 6 if self.alpha else 2, 0, 0, 0))
                 + chunk(b"IDAT", zlib.compress(raw, 9))
                 + chunk(b"IEND", b""))
 

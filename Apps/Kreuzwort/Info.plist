@@ -19,6 +19,12 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Exportbestimmungen vorab beantwortet. Ohne diesen Schlüssel fragt Apple
+	     bei **jedem** Upload danach. Die App verwendet keine eigene
+	     Verschlüsselung; HTTPS über Apple-Dienste (Game Center, iCloud) ist die
+	     Standard-Verschlüsselung des Systems und ausgenommen. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- Handoff: dasselbe Rätsel auf dem nächsten Gerät fortsetzen. -->
 	<key>NSUserActivityTypes</key>
 	<array>
