@@ -127,12 +127,22 @@ func run() throws {
         ("touch", .touch, CGSize(width: 420, height: 780)),
         ("tv", .livingRoom, CGSize(width: 1000, height: 620)),
     ]
+    // Für Store-Bilder zählt die exakte Größe: Apple nimmt beim Mac nur
+    // 1280x800, 1440x900, 2560x1600 oder 2880x1800. `--size 1280x800` rendert
+    // genau das, statt es hinterher zuzuschneiden.
+    let forcedSize: CGSize? = args.flags["size"].flatMap { text in
+        let parts = text.split(separator: "x").compactMap { Double($0) }
+        guard parts.count == 2 else { die("Größe? \(text) — erwartet BxH, etwa 1280x800") }
+        return CGSize(width: parts[0], height: parts[1])
+    }
     let stem = "\(variant.rawValue)-\(difficulty.rawValue)"
         + (args.flags["lang"].map { "-\($0)" } ?? "")
         + (args.flags["textsize"].map { "-\($0)" } ?? "")
+        + (args.flags["size"].map { "-\($0)" } ?? "")
 
 
-    for (name, caps, size) in surfaces {
+    for (name, caps, defaultSize) in surfaces {
+        let size = forcedSize ?? defaultSize
         let session = PuzzleSession(puzzle: puzzle)
         if args.has("filled") { session.fillWithSolution(except: args.int("filled", 3)) }
         let screen = PuzzleScreen(session: session, capabilities: caps)

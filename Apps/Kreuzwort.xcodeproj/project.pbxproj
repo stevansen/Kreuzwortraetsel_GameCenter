@@ -252,7 +252,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JF8N3J347R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -282,10 +282,16 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Kreuzwort/Kreuzwort.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Kreuzwort/Kreuzwort.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = Kreuzwort/Kreuzwort-macOS.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "Apple Distribution";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution";
+				"CODE_SIGN_STYLE[sdk=appletvos*]" = Manual;
+				"CODE_SIGN_STYLE[sdk=macosx*]" = Manual;
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=appletvos*]" = "Kreuzwort tvOS App Store";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Kreuzwort Mac App Store";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = JF8N3J347R;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;

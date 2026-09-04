@@ -316,7 +316,11 @@ def main() -> None:
         # genau das ist im Simulator passiert. Kommt beides gemeinsam dazu, wenn
         # der CloudKit-Container steht und der Sync einmal wirklich lief.
         'SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited)"',
-        'CURRENT_PROJECT_VERSION = 1',
+        # Apple nimmt jede Kombination aus Version und Build genau einmal an.
+        # Build 1 liegt für iOS oben; die weiteren Plattformen brauchen eine
+        # höhere Nummer („The bundle version must be higher than the previously
+        # uploaded version: '1'").
+        'CURRENT_PROJECT_VERSION = 2',
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = YES",
         # Eine eigene Info.plist als Basis: CFBundleURLTypes und
@@ -373,7 +377,30 @@ def main() -> None:
         "SWIFT_COMPILATION_MODE = wholemodule",
     ], False)
     config("targetDebug", "Debug", [], True)
-    config("targetRelease", "Release", [], True)
+    # **Verteilungssignatur nur für macOS-Release.**
+    #
+    # Zweimal daran gescheitert: automatische Signatur wollte beim Archivieren
+    # ein Mac-App-**Development**-Profil („Your team has no devices from which to
+    # generate a provisioning profile"), und dieselben Werte auf der Kommandozeile
+    # schlugen auf das SPM-Ressourcenbündel durch, das keine Profile kennt
+    # („KreuzwortCore_KreuzwortUI does not support provisioning profiles").
+    #
+    # Hier stehen sie am richtigen Ort: nur dieses Target, nur Release, nur
+    # macOS. Debug-Läufe auf dem Mac behalten die automatische Signatur.
+    config("targetRelease", "Release", [
+        '"CODE_SIGN_STYLE[sdk=macosx*]" = Manual',
+        '"PROVISIONING_PROFILE_SPECIFIER[sdk=macosx*]" = "Kreuzwort Mac App Store"',
+        '"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Distribution"',
+        # tvOS scheiterte identisch: „Xcode couldn't find any tvOS App
+        # Development provisioning profiles matching 'com.kreuzwort.app'".
+        '"CODE_SIGN_STYLE[sdk=appletvos*]" = Manual',
+        '"PROVISIONING_PROFILE_SPECIFIER[sdk=appletvos*]" = "Kreuzwort tvOS App Store"',
+        '"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "Apple Distribution"',
+        # iOS bleibt bei automatischer Signatur, weil dort ein
+        # Entwicklungsprofil vorlag und das Archiv damit durchlief. Auf einer
+        # frischen Maschine wäre dieselbe Ergänzung für `iphoneos*` nötig —
+        # ungetestet, deshalb hier nicht behauptet.
+    ], True)
     A("/* End XCBuildConfiguration section */")
 
     # --- XCConfigurationList ---
