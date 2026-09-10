@@ -60,17 +60,13 @@ public struct PuzzleScreen: View {
                 showsClueList = false
             }
         }
-        .focusable()
-        .onKeyPress(characters: .alphanumerics) { press in
-            handleCharacter(press.characters)
-        }
-        .onKeyPress(.leftArrow) { move(.across, false) }
-        .onKeyPress(.rightArrow) { move(.across, true) }
-        .onKeyPress(.upArrow) { move(.down, false) }
-        .onKeyPress(.downArrow) { move(.down, true) }
-        .onKeyPress(.space) { session.apply(.toggleDirection); return .handled }
-        .onKeyPress(.tab) { session.apply(.nextSlot); return .handled }
-        .onKeyPress(.delete) { session.apply(.deleteBackward); return .handled }
+        // **Nur wo es eine Tastatur gibt** — und zwar gar nicht erst angebaut,
+        // nicht bloß auf `false` gesetzt. Siehe `HardwareKeyboardControls`.
+        .modifier(HardwareKeyboardControls(
+            enabled: capabilities.hasHardwareKeyboard,
+            onCharacter: { handleCharacter($0) },
+            onMove: { move($0, $1) },
+            onCommand: { session.apply($0) }))
         .onAppear { session.start() }
         .onDisappear { session.pause() }
         .onChange(of: session.isSolved) { _, solved in
@@ -175,6 +171,43 @@ public struct PuzzleScreen: View {
     private func move(_ direction: Direction, _ forward: Bool) -> KeyPress.Result {
         session.apply(.move(direction, forward: forward))
         return .handled
+    }
+}
+
+/// Tastaturbedienung — angebaut **nur** auf Flächen mit Tastatur.
+///
+/// **Warum ein eigener Modifier.** `onKeyPress` bekommt nur Ereignisse, wenn
+/// die Ansicht fokussierbar ist; deshalb hing über dem ganzen Rätselbildschirm
+/// ein `focusable`. Auf dem Fernseher war das der Grund, warum die App
+/// unbedienbar war: gemessen mit XCUIRemote hatte dort von **62 Knöpfen kein
+/// einziger** den Fokus, weder beim Erscheinen noch nach Tastendrücken — der
+/// fokussierbare Container über allem nimmt den Teilbaum aus dem Fokussystem.
+///
+/// `focusable(false)` genügt als Gegenmittel nicht (gemessen: unverändert
+/// null fokussierte Knöpfe), und `defaultFocus` auf dem Gitter ebenso wenig.
+/// Was hilft, ist den Modifier dort **nicht anzubringen** — was ohnehin die
+/// ehrlichere Fassung ist: keine Tastaturbehandlung ohne Tastatur.
+private struct HardwareKeyboardControls: ViewModifier {
+    let enabled: Bool
+    let onCharacter: (String) -> KeyPress.Result
+    let onMove: (Direction, Bool) -> KeyPress.Result
+    let onCommand: (GridCommand) -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .focusable()
+                .onKeyPress(characters: .alphanumerics) { onCharacter($0.characters) }
+                .onKeyPress(.leftArrow) { onMove(.across, false) }
+                .onKeyPress(.rightArrow) { onMove(.across, true) }
+                .onKeyPress(.upArrow) { onMove(.down, false) }
+                .onKeyPress(.downArrow) { onMove(.down, true) }
+                .onKeyPress(.space) { onCommand(.toggleDirection); return .handled }
+                .onKeyPress(.tab) { onCommand(.nextSlot); return .handled }
+                .onKeyPress(.delete) { onCommand(.deleteBackward); return .handled }
+        } else {
+            content
+        }
     }
 }
 

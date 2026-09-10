@@ -71,8 +71,18 @@ public struct GridView: View {
         // Umgekehrt: springt der Cursor anders (Wortwechsel, Hinweis), zieht
         // der Fokus nach. Sonst zeigt der Fernseher den Fokus an einer Stelle
         // und den Cursor an einer anderen.
+        //
+        // **Aber nur, wenn der Fokus schon im Gitter steht** (`focusedCell`
+        // ist sonst nil). Ohne diese Bedingung riss jeder Buchstabe aus der
+        // Buchstabenleiste den Fokus zurück ins Gitter: der Cursor rückt
+        // weiter, der Fokus sprang mit — und für den nächsten Buchstaben
+        // musste man die ganze Strecke zur Leiste zurücklaufen. Gemessen mit
+        // XCUIRemote: nach einem „A“ war kein einziger der 64 Knöpfe mehr
+        // fokussiert. Bei einem Wort mit acht Buchstaben ist das keine
+        // Bedienung mehr.
         .onChange(of: session.caret.cell) { _, new in
-            guard capabilities.hasFocusEngine, focusedCell != new else { return }
+            guard capabilities.hasFocusEngine, focusedCell != nil,
+                  focusedCell != new else { return }
             focusedCell = new
         }
     }

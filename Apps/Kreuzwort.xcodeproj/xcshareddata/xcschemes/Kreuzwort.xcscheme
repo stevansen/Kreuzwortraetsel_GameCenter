@@ -10,8 +10,29 @@
                BuildableName="Kreuzwort.app" BlueprintName="Kreuzwort"
                ReferencedContainer="container:Kreuzwort.xcodeproj"/>
          </BuildActionEntry>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO"
+                           buildForProfiling="NO" buildForArchiving="NO"
+                           buildForAnalyzing="NO">
+            <BuildableReference BuildableIdentifier="primary"
+               BlueprintIdentifier="D75D01E5FD65F1CE576FC5B6"
+               BuildableName="KreuzwortUITests.xctest" BlueprintName="KreuzwortUITests"
+               ReferencedContainer="container:Kreuzwort.xcodeproj"/>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
+   <TestAction buildConfiguration="Debug"
+      selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary"
+               BlueprintIdentifier="D75D01E5FD65F1CE576FC5B6"
+               BuildableName="KreuzwortUITests.xctest" BlueprintName="KreuzwortUITests"
+               ReferencedContainer="container:Kreuzwort.xcodeproj"/>
+         </TestableReference>
+      </Testables>
+   </TestAction>
    <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0"
       useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO"

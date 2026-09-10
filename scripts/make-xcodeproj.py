@@ -18,6 +18,14 @@ import hashlib, os, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PROJECT_DIR = ROOT / "Apps" / "Kreuzwort.xcodeproj"
 APP_SOURCES = sorted(p.name for p in (ROOT / "Apps" / "Kreuzwort").glob("*.swift"))
+# UI-Tests laufen **im** Simulator und können deshalb `XCUIRemote` benutzen —
+# der einzige Weg, die Apple-TV-Fernbedienung zu prüfen. Von außen geht es
+# nicht: osascript hat keine Berechtigung für Tastatureingaben, die
+# Simulator-Steuerung antwortet mit `touchUnsupportedOnAppleTV`, und `simctl`
+# kennt überhaupt keine Eingabe.
+UITEST_DIR = ROOT / "Apps" / "KreuzwortUITests"
+UITEST_SOURCES = sorted(p.name for p in UITEST_DIR.glob("*.swift"))
+UITEST_BUNDLE_ID = "com.kreuzwort.app.uitests"
 INFO_PLIST = "Info.plist"
 PRODUCTS = ["PuzzleKit", "ClueCatalog", "KreuzwortUI", "SyncKit", "GameServices"]
 BUNDLE_ID = "com.kreuzwort.app"
@@ -42,7 +50,13 @@ def main() -> None:
         # lehnt der Upload ab, ohne Manifest seit Mai 2024 die Prüfung.
         "assetsRef", "assetsBuildFile", "privacyRef", "privacyBuildFile",
         "copyDataPhase",
+        "uiTestTarget", "uiTestGroup", "uiTestProductRef", "uiTestSourcesPhase",
+        "uiTestConfigList", "uiTestDebug", "uiTestRelease",
+        "uiTestDependency", "uiTestProxy",
     ]}
+    for name in UITEST_SOURCES:
+        ids[f"uifile:{name}"] = uid(f"uifile:{name}")
+        ids[f"uibuild:{name}"] = uid(f"uibuild:{name}")
     ids[f"file:{INFO_PLIST}"] = uid(f"file:{INFO_PLIST}")
     for name in APP_SOURCES:
         ids[f"file:{name}"] = uid(f"file:{name}")
@@ -73,6 +87,9 @@ def main() -> None:
       f"{{isa = PBXBuildFile; fileRef = {ids['assetsRef']} /* Assets.xcassets */; }};")
     A(f"\t\t{ids['privacyBuildFile']} /* PrivacyInfo.xcprivacy in Resources */ = "
       f"{{isa = PBXBuildFile; fileRef = {ids['privacyRef']} /* PrivacyInfo.xcprivacy */; }};")
+    for name in UITEST_SOURCES:
+        A(f"\t\t{ids[f'uibuild:{name}']} /* {name} in Sources */ = {{isa = PBXBuildFile; "
+          f"fileRef = {ids[f'uifile:{name}']} /* {name} */; }};")
     A("/* End PBXBuildFile section */")
 
     # --- PBXFileReference ---
@@ -91,6 +108,14 @@ def main() -> None:
     A(f"\t\t{ids['privacyRef']} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; "
       "lastKnownFileType = text.plist.xml; path = Kreuzwort/PrivacyInfo.xcprivacy; "
       "sourceTree = \"<group>\"; };")
+    A(f"\t\t{ids['uiTestProductRef']} /* KreuzwortUITests.xctest */ = "
+      "{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; "
+      "includeInIndex = 0; path = KreuzwortUITests.xctest; "
+      "sourceTree = BUILT_PRODUCTS_DIR; };")
+    for name in UITEST_SOURCES:
+        A(f"\t\t{ids[f'uifile:{name}']} /* {name} */ = {{isa = PBXFileReference; "
+          f"lastKnownFileType = sourcecode.swift; path = {name}; "
+          "sourceTree = \"<group>\"; };")
     A("/* End PBXFileReference section */")
 
     # --- PBXFrameworksBuildPhase ---
@@ -114,8 +139,18 @@ def main() -> None:
     A(f"\t\t\t\t{ids['appGroup']} /* Kreuzwort */,")
     A(f"\t\t\t\t{ids['assetsRef']} /* Assets.xcassets */,")
     A(f"\t\t\t\t{ids['privacyRef']} /* PrivacyInfo.xcprivacy */,")
+    A(f"\t\t\t\t{ids['uiTestGroup']} /* KreuzwortUITests */,")
     A(f"\t\t\t\t{ids['productsGroup']} /* Products */,")
     A("\t\t\t);")
+    A("\t\t\tsourceTree = \"<group>\";")
+    A("\t\t};")
+    A(f"\t\t{ids['uiTestGroup']} /* KreuzwortUITests */ = {{")
+    A("\t\t\tisa = PBXGroup;")
+    A("\t\t\tchildren = (")
+    for name in UITEST_SOURCES:
+        A(f"\t\t\t\t{ids[f'uifile:{name}']} /* {name} */,")
+    A("\t\t\t);")
+    A("\t\t\tpath = KreuzwortUITests;")
     A("\t\t\tsourceTree = \"<group>\";")
     A("\t\t};")
     A(f"\t\t{ids['appGroup']} /* Kreuzwort */ = {{")
@@ -132,6 +167,7 @@ def main() -> None:
     A("\t\t\tisa = PBXGroup;")
     A("\t\t\tchildren = (")
     A(f"\t\t\t\t{ids['productRef']} /* Kreuzwort.app */,")
+    A(f"\t\t\t\t{ids['uiTestProductRef']} /* KreuzwortUITests.xctest */,")
     A("\t\t\t);")
     A("\t\t\tname = Products;")
     A("\t\t\tsourceTree = \"<group>\";")
@@ -162,7 +198,43 @@ def main() -> None:
     A(f"\t\t\tproductReference = {ids['productRef']} /* Kreuzwort.app */;")
     A("\t\t\tproductType = \"com.apple.product-type.application\";")
     A("\t\t};")
+    A(f"\t\t{ids['uiTestTarget']} /* KreuzwortUITests */ = {{")
+    A("\t\t\tisa = PBXNativeTarget;")
+    A(f"\t\t\tbuildConfigurationList = {ids['uiTestConfigList']};")
+    A("\t\t\tbuildPhases = (")
+    A(f"\t\t\t\t{ids['uiTestSourcesPhase']} /* Sources */,")
+    A("\t\t\t);")
+    A("\t\t\tbuildRules = (")
+    A("\t\t\t);")
+    A("\t\t\tdependencies = (")
+    A(f"\t\t\t\t{ids['uiTestDependency']} /* PBXTargetDependency */,")
+    A("\t\t\t);")
+    A("\t\t\tname = KreuzwortUITests;")
+    A("\t\t\tproductName = KreuzwortUITests;")
+    A(f"\t\t\tproductReference = {ids['uiTestProductRef']} /* KreuzwortUITests.xctest */;")
+    A("\t\t\tproductType = \"com.apple.product-type.bundle.ui-testing\";")
+    A("\t\t};")
     A("/* End PBXNativeTarget section */")
+
+    # --- PBXTargetDependency ---
+    A("\n/* Begin PBXTargetDependency section */")
+    A(f"\t\t{ids['uiTestDependency']} /* PBXTargetDependency */ = {{")
+    A("\t\t\tisa = PBXTargetDependency;")
+    A(f"\t\t\ttarget = {ids['target']} /* Kreuzwort */;")
+    A(f"\t\t\ttargetProxy = {ids['uiTestProxy']} /* PBXContainerItemProxy */;")
+    A("\t\t};")
+    A("/* End PBXTargetDependency section */")
+
+    # --- PBXContainerItemProxy ---
+    A("\n/* Begin PBXContainerItemProxy section */")
+    A(f"\t\t{ids['uiTestProxy']} /* PBXContainerItemProxy */ = {{")
+    A("\t\t\tisa = PBXContainerItemProxy;")
+    A(f"\t\t\tcontainerPortal = {ids['project']} /* Project object */;")
+    A("\t\t\tproxyType = 1;")
+    A(f"\t\t\tremoteGlobalIDString = {ids['target']};")
+    A("\t\t\tremoteInfo = Kreuzwort;")
+    A("\t\t};")
+    A("/* End PBXContainerItemProxy section */")
 
     # --- PBXProject ---
     A("\n/* Begin PBXProject section */")
@@ -175,6 +247,11 @@ def main() -> None:
     A("\t\t\t\tTargetAttributes = {")
     A(f"\t\t\t\t\t{ids['target']} = {{")
     A("\t\t\t\t\t\tCreatedOnToolsVersion = 26.0;")
+    A("\t\t\t\t\t};")
+    A(f"\t\t\t\t\t{ids['uiTestTarget']} = {{")
+    A("\t\t\t\t\t\tCreatedOnToolsVersion = 26.0;")
+    # Ohne TestTargetID weiß Xcode nicht, welche App der Test startet.
+    A(f"\t\t\t\t\t\tTestTargetID = {ids['target']};")
     A("\t\t\t\t\t};")
     A("\t\t\t\t};")
     A("\t\t\t};")
@@ -196,6 +273,7 @@ def main() -> None:
     A("\t\t\tprojectRoot = \"\";")
     A("\t\t\ttargets = (")
     A(f"\t\t\t\t{ids['target']} /* Kreuzwort */,")
+    A(f"\t\t\t\t{ids['uiTestTarget']} /* KreuzwortUITests */,")
     A("\t\t\t);")
     A("\t\t};")
     A("/* End PBXProject section */")
@@ -271,6 +349,15 @@ def main() -> None:
     A("\t\t\tfiles = (")
     for name in APP_SOURCES:
         A(f"\t\t\t\t{ids[f'build:{name}']} /* {name} in Sources */,")
+    A("\t\t\t);")
+    A("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
+    A("\t\t};")
+    A(f"\t\t{ids['uiTestSourcesPhase']} /* Sources */ = {{")
+    A("\t\t\tisa = PBXSourcesBuildPhase;")
+    A("\t\t\tbuildActionMask = 2147483647;")
+    A("\t\t\tfiles = (")
+    for name in UITEST_SOURCES:
+        A(f"\t\t\t\t{ids[f'uibuild:{name}']} /* {name} in Sources */,")
     A("\t\t\t);")
     A("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
     A("\t\t};")
@@ -401,6 +488,32 @@ def main() -> None:
         # frischen Maschine wäre dieselbe Ergänzung für `iphoneos*` nötig —
         # ungetestet, deshalb hier nicht behauptet.
     ], True)
+    uitest_shared = [
+        f'PRODUCT_BUNDLE_IDENTIFIER = {UITEST_BUNDLE_ID}',
+        "PRODUCT_NAME = \"$(TARGET_NAME)\"",
+        "GENERATE_INFOPLIST_FILE = YES",
+        "TEST_TARGET_NAME = Kreuzwort",
+        "SWIFT_VERSION = 6.0",
+        f"IPHONEOS_DEPLOYMENT_TARGET = {DEPLOY_IOS}",
+        f"TVOS_DEPLOYMENT_TARGET = {DEPLOY_TV}",
+        f"MACOSX_DEPLOYMENT_TARGET = {DEPLOY_MAC}",
+        'SUPPORTED_PLATFORMS = "iphoneos iphonesimulator appletvos '
+        'appletvsimulator macosx"',
+        'TARGETED_DEVICE_FAMILY = "1,2,3"',
+        "DEVELOPMENT_TEAM = JF8N3J347R",
+        # Das Testbündel läuft nur im Simulator; automatische Signatur genügt
+        # und die Verteilungsprofile der App gelten hier ausdrücklich **nicht**.
+        "CODE_SIGN_STYLE = Automatic",
+    ]
+    for key, name in [("uiTestDebug", "Debug"), ("uiTestRelease", "Release")]:
+        A(f"\t\t{ids[key]} /* {name} */ = {{")
+        A("\t\t\tisa = XCBuildConfiguration;")
+        A("\t\t\tbuildSettings = {")
+        for line in sorted(uitest_shared):
+            A(f"\t\t\t\t{line};")
+        A("\t\t\t};")
+        A(f"\t\t\tname = {name};")
+        A("\t\t};")
     A("/* End XCBuildConfiguration section */")
 
     # --- XCConfigurationList ---
@@ -408,6 +521,7 @@ def main() -> None:
     for key, debug, release, label in [
         ("projectConfigList", "projectDebug", "projectRelease", "PBXProject"),
         ("targetConfigList", "targetDebug", "targetRelease", "PBXNativeTarget"),
+        ("uiTestConfigList", "uiTestDebug", "uiTestRelease", "PBXNativeTarget"),
     ]:
         A(f"\t\t{ids[key]} /* Build configuration list for {label} */ = {{")
         A("\t\t\tisa = XCConfigurationList;")
@@ -459,8 +573,29 @@ def main() -> None:
                BuildableName="Kreuzwort.app" BlueprintName="Kreuzwort"
                ReferencedContainer="container:Kreuzwort.xcodeproj"/>
          </BuildActionEntry>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="NO"
+                           buildForProfiling="NO" buildForArchiving="NO"
+                           buildForAnalyzing="NO">
+            <BuildableReference BuildableIdentifier="primary"
+               BlueprintIdentifier="{ids['uiTestTarget']}"
+               BuildableName="KreuzwortUITests.xctest" BlueprintName="KreuzwortUITests"
+               ReferencedContainer="container:Kreuzwort.xcodeproj"/>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
+   <TestAction buildConfiguration="Debug"
+      selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary"
+               BlueprintIdentifier="{ids['uiTestTarget']}"
+               BuildableName="KreuzwortUITests.xctest" BlueprintName="KreuzwortUITests"
+               ReferencedContainer="container:Kreuzwort.xcodeproj"/>
+         </TestableReference>
+      </Testables>
+   </TestAction>
    <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0"
       useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO"

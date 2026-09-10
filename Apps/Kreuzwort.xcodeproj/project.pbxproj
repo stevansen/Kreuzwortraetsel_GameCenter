@@ -19,6 +19,7 @@
 		02EA44CE106FD9CDBC341EA4 /* GameServices in Frameworks */ = {isa = PBXBuildFile; productRef = F6A68C5891116F6767339B87 /* GameServices */; };
 		9C1B7E3CA2C50FB6B9DA9182 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 86BE5228102BBE430BCEEA46 /* Assets.xcassets */; };
 		8EF5C3FA2B78C4F03E264604 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */; };
+		3F12274D4BCE239C4068BBC4 /* RemoteNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A21630FB93CDB96BB910254 /* RemoteNavigationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,8 @@
 		68E77A9D7BC78A97D4F4E27B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		86BE5228102BBE430BCEEA46 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Kreuzwort/Assets.xcassets; sourceTree = "<group>"; };
 		55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Kreuzwort/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		03FB85C2EB5054E25272F952 /* KreuzwortUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KreuzwortUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A21630FB93CDB96BB910254 /* RemoteNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteNavigationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,8 +58,17 @@
 				69F8D45498D7E20DA99BB780 /* Kreuzwort */,
 				86BE5228102BBE430BCEEA46 /* Assets.xcassets */,
 				55E1416B6DC005EC7005C148 /* PrivacyInfo.xcprivacy */,
+				E969B66923F871A694DD27F5 /* KreuzwortUITests */,
 				328EC33DF3954DC9B83FA285 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		E969B66923F871A694DD27F5 /* KreuzwortUITests */ = {
+			isa = PBXGroup;
+			children = (
+				0A21630FB93CDB96BB910254 /* RemoteNavigationTests.swift */,
+			);
+			path = KreuzwortUITests;
 			sourceTree = "<group>";
 		};
 		69F8D45498D7E20DA99BB780 /* Kreuzwort */ = {
@@ -76,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				85673086EF6CFD3A1F8591AF /* Kreuzwort.app */,
+				03FB85C2EB5054E25272F952 /* KreuzwortUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -108,7 +121,41 @@
 			productReference = 85673086EF6CFD3A1F8591AF /* Kreuzwort.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D75D01E5FD65F1CE576FC5B6 /* KreuzwortUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FA137867A7C2EE44A03D90F4;
+			buildPhases = (
+				9617B83888DF8D7AB6692021 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F7EDAAAE3482135F6E46CDD6 /* PBXTargetDependency */,
+			);
+			name = KreuzwortUITests;
+			productName = KreuzwortUITests;
+			productReference = 03FB85C2EB5054E25272F952 /* KreuzwortUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		F7EDAAAE3482135F6E46CDD6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0E8A3AD980EC179856012B7E /* Kreuzwort */;
+			targetProxy = F548A9596E0D034DE038A4B3 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		F548A9596E0D034DE038A4B3 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0E8A3AD980EC179856012B7E;
+			remoteInfo = Kreuzwort;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXProject section */
 		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
@@ -120,6 +167,10 @@
 				TargetAttributes = {
 					0E8A3AD980EC179856012B7E = {
 						CreatedOnToolsVersion = 26.0;
+					};
+					D75D01E5FD65F1CE576FC5B6 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 0E8A3AD980EC179856012B7E;
 					};
 				};
 			};
@@ -143,6 +194,7 @@
 			projectRoot = "";
 			targets = (
 				0E8A3AD980EC179856012B7E /* Kreuzwort */,
+				D75D01E5FD65F1CE576FC5B6 /* KreuzwortUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -187,6 +239,14 @@
 				95140CBCBF751AA7F548E156 /* HomeView.swift in Sources */,
 				6A7D73054BA50994B5296C27 /* KreuzwortApp.swift in Sources */,
 				F00B6CB6834559DED84F4E85 /* PlatformSurface.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9617B83888DF8D7AB6692021 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3F12274D4BCE239C4068BBC4 /* RemoteNavigationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +373,42 @@
 			};
 			name = Release;
 		};
+		A58F5A2B74CD69562DD53278 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JF8N3J347R;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator appletvos appletvsimulator macosx";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TEST_TARGET_NAME = Kreuzwort;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
+			};
+			name = Debug;
+		};
+		3B4B3BD51C00FC15EDCFF68E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = JF8N3J347R;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kreuzwort.app.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator appletvos appletvsimulator macosx";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TEST_TARGET_NAME = Kreuzwort;
+				TVOS_DEPLOYMENT_TARGET = 18.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -330,6 +426,15 @@
 			buildConfigurations = (
 				7082CC0B6FC1282FCEABD07A /* Debug */,
 				639A7CA24D39909E713B47F7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FA137867A7C2EE44A03D90F4 /* Build configuration list for PBXNativeTarget */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A58F5A2B74CD69562DD53278 /* Debug */,
+				3B4B3BD51C00FC15EDCFF68E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
