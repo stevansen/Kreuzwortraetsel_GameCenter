@@ -75,26 +75,40 @@ public struct PuzzleScreen: View {
     }
 
     private var playArea: some View {
-        VStack(spacing: 12) {
-            header
-            GridView(session: session, capabilities: capabilities) { cell in
-                session.apply(.jump(cell))
-            }
-            .frame(maxHeight: .infinity)
-            ClueBarView(session: session,
-                        onPrevious: { session.apply(.previousSlot) },
-                        onNext: { session.apply(.nextSlot) })
-            // Buchstaben auf dem Schirm, wo es keine Tastatur gibt. Ohne diese
-            // Leiste ist die App auf dem Fernseher nicht spielbar — die gesamte
-            // Eingabe hing an `onKeyPress`, und die Fernbedienung liefert keine
-            // Zeichen.
+        HStack(alignment: .top, spacing: 12) {
+            // **Buchstaben als Spalte, nicht als Leiste.** Wo es keine Tastatur
+            // gibt, ist diese Leiste der einzige Eingabeweg — die Fernbedienung
+            // liefert Fokus und „Auswählen", aber keine Zeichen.
+            //
+            // Sie steht **neben** dem Gitter, weil auf dem Fernseher die Höhe
+            // das knappe Maß ist und die Breite im Überfluss vorhanden: unter
+            // dem Gitter kostete sie rund 270 pt, und dem Gitter blieben davon
+            // etwa 30 pt je Zelle — aus drei Metern schwer lesbar. Als Spalte
+            // kostet sie keine Höhe.
             if capabilities.needsOnScreenLetters {
                 // Dieselbe Umwandlung wie bei der Tastatur, damit es nur einen
                 // Weg von einem Zeichen zu einem Eintrag gibt.
-                LetterRailView(onLetter: { _ = handleCharacter(String($0)) },
+                LetterRailView(layout: .tall,
+                               onLetter: { _ = handleCharacter(String($0)) },
                                onDelete: { session.apply(.deleteBackward) })
+                    // 190 pt waren zu schmal: tvOS-Knöpfe bringen so viel
+                    // Innenabstand mit, dass je Knopf nur rund 15 pt für den
+                    // Inhalt blieben — im gerenderten Bild zeigte die Spalte
+                    // leere Kacheln ohne Buchstaben. Die Breite ist hier nicht
+                    // knapp; das Gitter ist ohnehin durch die Höhe begrenzt.
+                    .frame(width: 300)
             }
-            controls
+            VStack(spacing: 12) {
+                header
+                GridView(session: session, capabilities: capabilities) { cell in
+                    session.apply(.jump(cell))
+                }
+                .frame(maxHeight: .infinity)
+                ClueBarView(session: session,
+                            onPrevious: { session.apply(.previousSlot) },
+                            onNext: { session.apply(.nextSlot) })
+                controls
+            }
         }
     }
 

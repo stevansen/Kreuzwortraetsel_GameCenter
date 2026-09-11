@@ -38,7 +38,17 @@ public final class PuzzleSession {
         self.router = GridInputRouter(navigation: GridNavigation(puzzle: puzzle))
         self.solution = puzzle.solutionLetters()
         self.letterCells = puzzle.letterCellCount
-        self.caret = Caret(cell: navigationStart(puzzle: puzzle), direction: .across)
+        // **Startrichtung, in der es wirklich ein Wort gibt.** Fest auf
+        // `.across` gesetzt stand in der Frageleiste „Keine Frage ausgewählt",
+        // sobald die erste Buchstabenzelle nur zu einem senkrechten Wort
+        // gehört. Sichtbar wurde das erst, als der Umweg wegfiel, der das
+        // vorher verdeckt hat: das Gitter setzte beim Erscheinen den Fokus,
+        // das löste ein `jump` aus, und `jump` sucht sich die gangbare
+        // Richtung. Auf Flächen ohne Fokus-Engine gab es diesen Umweg nie.
+        let startCell = navigationStart(puzzle: puzzle)
+        self.caret = Caret(cell: startCell,
+                           direction: self.navigation.viableDirection(
+                               at: startCell, preferring: .across) ?? .across)
         self.isSolved = start.completedAtEpoch != nil
     }
 

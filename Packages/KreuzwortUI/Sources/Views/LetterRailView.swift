@@ -11,29 +11,48 @@ import PuzzleKit
 /// **Warum kein `ScrollView`.** 29 Knöpfe in einer scrollenden Zeile wären auf
 /// dem Fernseher unbequem (jeder Buchstabe hinter einer Fokusreise) und würden
 /// headless als SwiftUI-Platzhalter rendern — Snapshot-Tests wären damit
-/// unbrauchbar, dieselbe Falle wie bei `Menu` in den Hilfeknöpfen. Zwei feste
+/// unbrauchbar, dieselbe Falle wie bei `Menu` in den Hilfeknöpfen. Feste
 /// Reihen zeigen alles gleichzeitig und rendern überall.
 public struct LetterRailView: View {
     /// Deutsche Buchstaben plus Umlaute. Kein ẞ: Antworten werden auf SS
     /// normalisiert, ein Knopf dafür würde nur ins Leere führen.
     static let letters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ")
 
+    /// Breit unter dem Gitter oder schmal daneben.
+    ///
+    /// **Warum es beides gibt.** Unter dem Gitter kostet die Leiste Höhe, und
+    /// Höhe ist auf dem Fernseher das knappe Maß: gemessen im 1080p-Simulator
+    /// blieben dem Gitter noch rund 400 pt, also etwa 30 pt je Zelle — aus
+    /// drei Metern schwer lesbar und deutlich unter den angepeilten 48 pt.
+    /// Breite ist dort im Überfluss vorhanden. Als Spalte neben dem Gitter
+    /// kostet die Leiste nichts an Höhe.
+    public enum Layout: Sendable {
+        /// Zehn Knöpfe je Reihe, drei Reihen — für Flächen mit viel Breite
+        /// unter dem Gitter.
+        case wide
+        /// Drei Knöpfe je Reihe, zehn Reihen — als Spalte neben dem Gitter.
+        case tall
+    }
+
+    let layout: Layout
     let onLetter: (Character) -> Void
     let onDelete: () -> Void
 
-    public init(onLetter: @escaping (Character) -> Void,
+    public init(layout: Layout = .wide,
+                onLetter: @escaping (Character) -> Void,
                 onDelete: @escaping () -> Void) {
+        self.layout = layout
         self.onLetter = onLetter
         self.onDelete = onDelete
     }
 
     /// Höchstens so viele Knöpfe je Reihe.
     ///
-    /// Zwei Reihen à 15 waren der erste Anlauf und liefen auf dem Fernseher
-    /// links und rechts aus dem Bild — im gerenderten Bild begann die Leiste bei
-    /// „C". Drei Reihen à 10 passen bei 29 Buchstaben plus Löschen genau auf und
-    /// bleiben auch auf schmaleren Flächen innerhalb des Schirms.
-    static let columns = 10
+    /// Zwei Reihen à 15 waren der erste Anlauf für die breite Fassung und
+    /// liefen auf dem Fernseher links und rechts aus dem Bild — im gerenderten
+    /// Bild begann die Leiste bei „C". Drei Reihen à 10 passen bei 29
+    /// Buchstaben plus Löschen genau auf.
+    private var columns: Int { layout == .wide ? 10 : 3 }
 
     /// Reihen, jede mit `columns` Plätzen. Die letzte Reihe wird mit Leerplätzen
     /// aufgefüllt, damit alle Knöpfe gleich breit bleiben — ohne das würde die
@@ -41,9 +60,9 @@ public struct LetterRailView: View {
     private var rows: [[Character?]] {
         var items: [Character?] = Self.letters.map { $0 }
         items.append(nil)                      // Platz für Löschen
-        while items.count % Self.columns != 0 { items.append(nil) }
-        return stride(from: 0, to: items.count, by: Self.columns)
-            .map { Array(items[$0 ..< min($0 + Self.columns, items.count)]) }
+        while items.count % columns != 0 { items.append(nil) }
+        return stride(from: 0, to: items.count, by: columns)
+            .map { Array(items[$0 ..< min($0 + columns, items.count)]) }
     }
 
     public var body: some View {
@@ -81,6 +100,6 @@ public struct LetterRailView: View {
     /// Der Löschen-Knopf steht auf dem ersten freien Platz nach dem letzten
     /// Buchstaben.
     private func isDeleteSlot(row: Int, index: Int) -> Bool {
-        row * Self.columns + index == Self.letters.count
+        row * columns + index == Self.letters.count
     }
 }
