@@ -52,14 +52,50 @@ final class AppEnvironment {
     private var snapshotStore: SharedSnapshotStore?
     private(set) var syncAvailable = false
 
+    /// Wohin diese App schreiben darf.
+    ///
+    /// **tvOS erlaubt nicht überall Schreibzugriff.** Dort sind nur `Caches`
+    /// und `tmp` beschreibbar; `Application Support` ist gesperrt. Im
+    /// Simulator fällt das nie auf — dessen Sandbox ist ein gewöhnliches
+    /// Verzeichnis auf dem Mac, und dort gelingt alles.
+    ///
+    /// Auf einem echten Apple TV warf deshalb schon `ProgressStore()` beim
+    /// Start, `load()` fing den Wurf und zeigte den Fehlerbildschirm. Genau
+    /// das hat App Review gesehen: „We were unable to access the app because
+    /// it displayed an error message upon launch" (tvOS 27, Build 4).
+    ///
+    /// Die Verzweigung steht hier im App-Target und nicht in den Paketen: die
+    /// sollen plattformneutral bleiben, und alle Speicher nehmen ohnehin ein
+    /// Verzeichnis entgegen.
+    private static func storageBase() -> URL {
+        #if os(tvOS)
+        let ort = FileManager.SearchPathDirectory.cachesDirectory
+        #else
+        let ort = FileManager.SearchPathDirectory.applicationSupportDirectory
+        #endif
+        let basis = (try? FileManager.default.url(for: ort, in: .userDomainMask,
+                                                  appropriateFor: nil, create: true))
+            ?? FileManager.default.temporaryDirectory
+        let eigen = basis.appendingPathComponent("Kreuzwort")
+        try? FileManager.default.createDirectory(at: eigen,
+                                                 withIntermediateDirectories: true)
+        return eigen
+    }
+
     func load() async {
         state = .loading
+        // **Der Katalog ist unverzichtbar — die Speicher sind es nicht.**
+        //
+        // Ohne Katalog gibt es kein Rätsel, das ist ein echter Startfehler.
+        // Spielstand, Profil und Game-Center-Postausgang gehören nicht in
+        // diese Kategorie: fehlen sie, wird nicht gespeichert, aber gespielt
+        // werden kann. Bisher lagen sie im selben `do`, ein Wurf landete im
+        // `catch` und zeigte den Fehlerbildschirm — die App war damit
+        // unerreichbar, obwohl ihr Kern in Ordnung war.
+        let reader: CatalogReader
         do {
-            let store = try ProgressStore()
-            self.store = store
             let resources = try Self.resourceRoot()
-
-            let reader = try CatalogReader(
+            reader = try CatalogReader(
                 path: resources.appendingPathComponent("catalog.sqlite").path)
             let lexicon = try reader.loadLexicon()
             guard lexicon.count > 0 else {
@@ -78,49 +114,36 @@ final class AppEnvironment {
             verifiedSeeds = Self.loadVerifiedSeeds(
                 at: resources.appendingPathComponent("seeds.txt"),
                 catalogVersion: reader.catalogVersion)
+        } catch {
+            state = .failed("\(error)")
+            return
+        }
+
+        // Ab hier darf nichts mehr den Start verhindern.
+        let basis = Self.storageBase()
+        let store = try? ProgressStore(directory: basis.appendingPathComponent("progress"))
+        self.store = store
+        if let store {
             resumable = store.mostRecentUnfinished(
                 generatorVersion: Generator.currentVersion,
                 catalogVersion: reader.catalogVersion)
+        }
 
-            let profileStore = try ProfileStore()
-            self.profileStore = profileStore
-            profile = profileStore.load()
+        let profileStore = try? ProfileStore(directory: basis)
+        self.profileStore = profileStore
+        profile = profileStore?.load() ?? PlayerProfile()
 
-            // Game Center im Hintergrund: die App ist ohne Anmeldung vollständig
-            // spielbar, also darf hier nichts warten.
+        state = .ready
+
+        guard let store, let profileStore else { return }
+
+        // Game Center im Hintergrund: die App ist ohne Anmeldung vollständig
+        // spielbar, also darf hier nichts warten.
+        if let outbox = try? SubmissionOutbox(directory: basis) {
             let coordinator = GameCenterCoordinator(
-                service: LiveGameCenterService(),
-                outbox: try SubmissionOutbox(),
+                service: LiveGameCenterService(), outbox: outbox,
                 deviceID: store.deviceID)
             self.coordinator = coordinator
-            // Sync: CloudKit nur, wenn der Build das iCloud-Entitlement hat.
-            //
-            // Das `try?` hier war ein Trugschluss und hat die App im Simulator
-            // beim Start abgeschossen: `CKContainer(identifier:)` **trappt**,
-            // wenn das Entitlement fehlt — das ist kein Fehler, den `try?`
-            // auffangen kann, sondern ein Absturz mitten in
-            // `AppEnvironment.load()`. Getroffen hätte es jeden Build ohne
-            // iCloud-Berechtigung, also auch den, der jetzt in den Store geht.
-            //
-            // Der Schalter ist eine Bauzeit-Tatsache und wird zusammen mit dem
-            // Entitlement gesetzt (siehe Kreuzwort.entitlements und
-            // scripts/make-xcodeproj.py), damit beides nicht auseinanderläuft.
-            var backend: any SyncBackend = LocalOnlySyncBackend()
-            #if KREUZWORT_CLOUDKIT
-            if let cloud = try? CloudKitSyncBackend() { backend = cloud }
-            #endif
-            let sync = SyncCoordinator(backend: backend, progressStore: store,
-                                       profileStore: profileStore,
-                                       deviceID: store.deviceID)
-            self.sync = sync
-            snapshotStore = try? SharedSnapshotStore()
-
-            state = .ready
-            Task { [weak self] in
-                await sync.start()
-                await sync.synchronize()
-                await self?.reloadAfterSync()
-            }
             Task { [weak self] in
                 await coordinator.start()
                 await self?.refreshGameCenterState()
@@ -128,8 +151,35 @@ final class AppEnvironment {
                                             today: Self.today())
                 await self?.refreshGameCenterState()
             }
-        } catch {
-            state = .failed("\(error)")
+        }
+
+        // Sync: CloudKit nur, wenn der Build das iCloud-Entitlement hat.
+        //
+        // Das `try?` hier war ein Trugschluss und hat die App im Simulator
+        // beim Start abgeschossen: `CKContainer(identifier:)` **trappt**,
+        // wenn das Entitlement fehlt — das ist kein Fehler, den `try?`
+        // auffangen kann, sondern ein Absturz mitten in
+        // `AppEnvironment.load()`. Getroffen hätte es jeden Build ohne
+        // iCloud-Berechtigung, also auch den, der jetzt in den Store geht.
+        //
+        // Der Schalter ist eine Bauzeit-Tatsache und wird zusammen mit dem
+        // Entitlement gesetzt (siehe Kreuzwort.entitlements und
+        // scripts/make-xcodeproj.py), damit beides nicht auseinanderläuft.
+        var backend: any SyncBackend = LocalOnlySyncBackend()
+        #if KREUZWORT_CLOUDKIT
+        if let cloud = try? CloudKitSyncBackend(
+            stateDirectory: basis.appendingPathComponent("sync")) { backend = cloud }
+        #endif
+        let sync = SyncCoordinator(backend: backend, progressStore: store,
+                                   profileStore: profileStore,
+                                   deviceID: store.deviceID)
+        self.sync = sync
+        snapshotStore = try? SharedSnapshotStore(directory: basis)
+
+        Task { [weak self] in
+            await sync.start()
+            await sync.synchronize()
+            await self?.reloadAfterSync()
         }
     }
 
