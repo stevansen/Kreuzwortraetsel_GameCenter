@@ -63,7 +63,7 @@ public struct PuzzleScreen: View {
         // **Nur wo es eine Tastatur gibt** — und zwar gar nicht erst angebaut,
         // nicht bloß auf `false` gesetzt. Siehe `HardwareKeyboardControls`.
         .modifier(HardwareKeyboardControls(
-            enabled: capabilities.hasHardwareKeyboard,
+            enabled: capabilities.handlesHardwareKeys,
             onCharacter: { handleCharacter($0) },
             onMove: { move($0, $1) },
             onCommand: { session.apply($0) }))
@@ -76,40 +76,44 @@ public struct PuzzleScreen: View {
 
     private var playArea: some View {
         HStack(alignment: .top, spacing: 12) {
-            // **Buchstaben als Spalte, nicht als Leiste.** Wo es keine Tastatur
-            // gibt, ist diese Leiste der einzige Eingabeweg — die Fernbedienung
-            // liefert Fokus und „Auswählen", aber keine Zeichen.
+            // **Buchstaben als Spalte — nur wo die Höhe knapp ist.**
             //
-            // Sie steht **neben** dem Gitter, weil auf dem Fernseher die Höhe
-            // das knappe Maß ist und die Breite im Überfluss vorhanden: unter
-            // dem Gitter kostete sie rund 270 pt, und dem Gitter blieben davon
-            // etwa 30 pt je Zelle — aus drei Metern schwer lesbar. Als Spalte
-            // kostet sie keine Höhe.
-            if capabilities.needsOnScreenLetters {
-                // Dieselbe Umwandlung wie bei der Tastatur, damit es nur einen
-                // Weg von einem Zeichen zu einem Eintrag gibt.
-                LetterRailView(layout: .tall,
-                               onLetter: { _ = handleCharacter(String($0)) },
-                               onDelete: { session.apply(.deleteBackward) })
-                    // 190 pt waren zu schmal: tvOS-Knöpfe bringen so viel
-                    // Innenabstand mit, dass je Knopf nur rund 15 pt für den
-                    // Inhalt blieben — im gerenderten Bild zeigte die Spalte
-                    // leere Kacheln ohne Buchstaben. Die Breite ist hier nicht
-                    // knapp; das Gitter ist ohnehin durch die Höhe begrenzt.
-                    .frame(width: 300)
+            // Auf dem Fernseher ist die Breite im Überfluss vorhanden und die
+            // Höhe das knappe Maß: unter dem Gitter kostete die Leiste rund
+            // 270 pt und drückte die Zellen auf etwa 30 pt. Auf einem Telefon
+            // ist es umgekehrt — dort steht sie unten, siehe `spalte`.
+            if capabilities.needsOnScreenLetters, capabilities.lettersBesideGrid {
+                letterRail(.tall).frame(width: 300)
             }
-            VStack(spacing: 12) {
-                header
-                GridView(session: session, capabilities: capabilities) { cell in
-                    session.apply(.jump(cell))
-                }
-                .frame(maxHeight: .infinity)
-                ClueBarView(session: session,
-                            onPrevious: { session.apply(.previousSlot) },
-                            onNext: { session.apply(.nextSlot) })
-                controls
-            }
+            spalte
         }
+    }
+
+    private var spalte: some View {
+        VStack(spacing: 12) {
+            header
+            GridView(session: session, capabilities: capabilities) { cell in
+                session.apply(.jump(cell))
+            }
+            .frame(maxHeight: .infinity)
+            ClueBarView(session: session,
+                        onPrevious: { session.apply(.previousSlot) },
+                        onNext: { session.apply(.nextSlot) })
+            // Buchstaben unter dem Gitter, wo es keine Tastatur gibt und Platz
+            // in der Höhe ist — die gewohnte Stelle auf einem Telefon.
+            if capabilities.needsOnScreenLetters, !capabilities.lettersBesideGrid {
+                letterRail(.wide)
+            }
+            controls
+        }
+    }
+
+    /// Dieselbe Umwandlung wie bei der Tastatur, damit es nur einen Weg von
+    /// einem Zeichen zu einem Eintrag gibt.
+    private func letterRail(_ layout: LetterRailView.Layout) -> some View {
+        LetterRailView(layout: layout,
+                       onLetter: { _ = handleCharacter(String($0)) },
+                       onDelete: { session.apply(.deleteBackward) })
     }
 
     private var header: some View {
@@ -134,34 +138,41 @@ public struct PuzzleScreen: View {
     private var controls: some View {
         HStack(spacing: 10) {
             if !capabilities.showsSideClueList {
-                Button { showsClueList = true } label: {
-                    Label { Text(loc: "action.questions") } icon: { Image(systemName: "list.bullet") }
-                }
+                control("action.questions", "list.bullet") { showsClueList = true }
             }
             Spacer(minLength: 4)
             if session.canRevealLetter {
-                Button { session.revealLetter() } label: {
-                    Label { Text(loc: "action.revealLetter") } icon: { Image(systemName: "character.magnify") }
-                }
+                control("action.revealLetter", "character.magnify") { session.revealLetter() }
             }
             if session.canRevealWord {
-                Button { session.revealWord() } label: {
-                    Label { Text(loc: "action.revealWord") } icon: { Image(systemName: "text.magnifyingglass") }
-                }
+                control("action.revealWord", "text.magnifyingglass") { session.revealWord() }
             }
             if session.canCheckGrid {
-                Button { _ = session.checkGrid() } label: {
-                    Label { Text(loc: "action.check") } icon: { Image(systemName: "checkmark.circle") }
-                }
+                control("action.check", "checkmark.circle") { _ = session.checkGrid() }
             }
-            Button { session.apply(.togglePencil) } label: {
-                Label { Text(loc: isPencil ? "action.pencilOff" : "action.pencilOn") }
-                    icon: { Image(systemName: isPencil ? "pencil.slash" : "pencil") }
-            }
+            control(isPencil ? "action.pencilOff" : "action.pencilOn",
+                    isPencil ? "pencil.slash" : "pencil") { session.apply(.togglePencil) }
         }
         .buttonStyle(.bordered)
         .font(.callout)
         .labelStyle(LabelStyleForSurface(showsTitle: capabilities.hasPointer))
+    }
+
+    /// Ein Hilfeknopf.
+    ///
+    /// **Die Beschriftung wird ausdrücklich gesetzt.** Vorher trug sie allein
+    /// `LabelStyleForSurface`, das den Titel auf schmalen Flächen in ein
+    /// verstecktes Overlay legt — gemessen auf dem iPhone hatten daraufhin
+    /// **alle fünf Knöpfe eine leere Beschriftung**. Für das Auge war das
+    /// unsichtbar, für VoiceOver waren die Knöpfe namenlos, und ein UI-Test
+    /// fand sie nicht. Die Darstellung darf entscheiden, ob der Titel zu
+    /// sehen ist; ob er *existiert*, darf sie nicht entscheiden.
+    private func control(_ key: String, _ symbol: String,
+                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label { Text(loc: key) } icon: { Image(systemName: symbol) }
+        }
+        .accessibilityLabel(Loc.string(key))
     }
 
     private var isPencil: Bool {
@@ -188,7 +199,7 @@ public struct PuzzleScreen: View {
     }
 }
 
-/// Tastaturbedienung — angebaut **nur** auf Flächen mit Tastatur.
+/// Tastaturbedienung — angebaut überall **außer** dort, wo sie schadet.
 ///
 /// **Warum ein eigener Modifier.** `onKeyPress` bekommt nur Ereignisse, wenn
 /// die Ansicht fokussierbar ist; deshalb hing über dem ganzen Rätselbildschirm
@@ -199,8 +210,13 @@ public struct PuzzleScreen: View {
 ///
 /// `focusable(false)` genügt als Gegenmittel nicht (gemessen: unverändert
 /// null fokussierte Knöpfe), und `defaultFocus` auf dem Gitter ebenso wenig.
-/// Was hilft, ist den Modifier dort **nicht anzubringen** — was ohnehin die
-/// ehrlichere Fassung ist: keine Tastaturbehandlung ohne Tastatur.
+/// Was hilft, ist den Modifier dort **nicht anzubringen**.
+///
+/// **Die Bedingung war zuerst `hasHardwareKeyboard` — das war zu streng.**
+/// Ob am iPad gerade ein Magic Keyboard steckt, weiß `SurfaceCapabilities`
+/// nicht; dort steht immer `false`. Damit verlor das iPad mit Tastatur die
+/// Eingabe. Entscheidend ist nicht, ob eine Tastatur da ist, sondern ob der
+/// Modifier schadet — und das tut er nur, wo eine Fokus-Engine läuft.
 private struct HardwareKeyboardControls: ViewModifier {
     let enabled: Bool
     let onCharacter: (String) -> KeyPress.Result

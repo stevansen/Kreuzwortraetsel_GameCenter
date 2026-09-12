@@ -407,7 +407,7 @@ def main() -> None:
         # Build 1 liegt für iOS oben; die weiteren Plattformen brauchen eine
         # höhere Nummer („The bundle version must be higher than the previously
         # uploaded version: '1'").
-        'CURRENT_PROJECT_VERSION = 6',
+        'CURRENT_PROJECT_VERSION = 7',
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = YES",
         # Eine eigene Info.plist als Basis: CFBundleURLTypes und
@@ -426,7 +426,7 @@ def main() -> None:
         'UIInterfaceOrientationLandscapeRight"',
         'LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks '
         '@executable_path/../Frameworks"',
-        "MARKETING_VERSION = 1.0",
+        "MARKETING_VERSION = 1.1",
         f'PRODUCT_BUNDLE_IDENTIFIER = {BUNDLE_ID}',
         'PRODUCT_NAME = "$(TARGET_NAME)"',
         "SWIFT_APPROACHABLE_CONCURRENCY = YES",

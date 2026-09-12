@@ -32,6 +32,7 @@
 "cluelist.down" = "Verticali";
 "cluelist.all" = "Definizioni";
 "cluelist.complete" = "completa";
+"cluelist.progress" = "%lld lettere, %lld inserite";
 
 "grid.cell.position" = "Riga %lld, colonna %lld";
 "grid.cell.empty" = "vuota";

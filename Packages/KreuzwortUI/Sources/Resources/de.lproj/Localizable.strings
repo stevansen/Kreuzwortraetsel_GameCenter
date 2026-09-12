@@ -32,6 +32,7 @@
 "cluelist.down" = "Senkrecht";
 "cluelist.all" = "Fragen";
 "cluelist.complete" = "vollständig";
+"cluelist.progress" = "%lld Buchstaben, %lld gesetzt";
 
 "grid.cell.position" = "Zeile %lld, Spalte %lld";
 "grid.cell.empty" = "leer";

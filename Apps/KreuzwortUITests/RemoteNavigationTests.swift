@@ -1,5 +1,11 @@
 import XCTest
 
+// **Übersetzt nur für tvOS.** `XCUIRemote` gibt es auf keiner anderen
+// Plattform; ein `XCTSkip` zur Laufzeit kommt zu spät, die Datei scheitert
+// schon beim Übersetzen. Aufgefallen, als dasselbe Testziel einmal gegen
+// einen iPhone-Simulator lief.
+#if os(tvOS)
+
 /// Bedienbarkeit mit der Apple-TV-Fernbedienung.
 ///
 /// **Warum es diesen Test gibt.** Die tvOS-Fassung war gebaut, gerendert und
@@ -152,3 +158,4 @@ final class RemoteNavigationTests: XCTestCase {
                           "Der zweite Buchstabe kam nicht an")
     }
 }
+#endif

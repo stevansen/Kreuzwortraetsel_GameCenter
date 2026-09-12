@@ -83,10 +83,43 @@ public struct SurfaceCapabilities: Sendable, Hashable {
 
     /// Braucht die Fläche Buchstaben auf dem Schirm?
     ///
-    /// Die Fernbedienung liefert Fokusbewegung und „Auswählen", aber keine
-    /// Zeichen. Ohne Tastatur und mit Fokus-Engine ist eine Buchstabenleiste der
-    /// einzige Weg, überhaupt etwas einzutragen.
-    public var needsOnScreenLetters: Bool { !hasHardwareKeyboard && hasFocusEngine }
+    /// **Die Bedingung hieß einmal `!hasHardwareKeyboard && hasFocusEngine`**
+    /// — die Leiste war als Lösung für den Fernseher gedacht. Das war zu eng
+    /// gefasst: ein iPhone hat genauso wenig Tastatur wie eine Fernbedienung.
+    /// Gemessen auf dem iPhone-Simulator zählte der Rätselbildschirm sieben
+    /// Knöpfe — zwei für den Fragewechsel, fünf Hilfen — und keinen einzigen
+    /// Buchstaben. Eine Bildschirmtastatur gibt es nirgends im Projekt (kein
+    /// `TextField`, kein `UIKeyInput`), und `onKeyPress` antwortet nur auf
+    /// echte Tasten. Ohne angeschlossene Tastatur ließ sich dort kein
+    /// Buchstabe eintragen; die einzigen Wege ins Gitter waren „Buchstabe
+    /// aufdecken" und „Wort aufdecken".
+    ///
+    /// Die Frage ist also allein, ob es eine Tastatur gibt — nicht, wie der
+    /// Fokus wandert.
+    public var needsOnScreenLetters: Bool { !hasHardwareKeyboard }
+
+    /// Steht die Buchstabenleiste **neben** dem Gitter statt darunter?
+    ///
+    /// Nur dort, wo die Höhe knapp und die Breite im Überfluss vorhanden ist:
+    /// auf dem Fernseher. Unter dem Gitter kostete die Leiste dort rund 270 pt
+    /// und drückte die Zellen auf etwa 30 pt. Auf einem Telefon ist es genau
+    /// umgekehrt — dort gehört sie nach unten, wie man es von Tastaturen
+    /// gewohnt ist.
+    public var lettersBesideGrid: Bool { viewingDistance == .far }
+
+    /// Soll die Tastaturbehandlung angebaut werden?
+    ///
+    /// **Nicht an `hasHardwareKeyboard` gebunden.** Ob gerade eine Tastatur am
+    /// iPad steckt, weiß diese Beschreibung nicht — sie meldet dort immer
+    /// `false`. Ein erster Anlauf knüpfte den Modifier daran und nahm damit
+    /// dem iPad mit Magic Keyboard die Eingabe weg.
+    ///
+    /// Entscheidend ist, wo der Modifier **schadet**: er macht den ganzen
+    /// Bildschirm fokussierbar und nimmt auf dem Fernseher den Teilbaum aus
+    /// dem Fokussystem — dort war die App dadurch unbedienbar. Wo es keine
+    /// Fokus-Engine gibt, ist er harmlos und bringt jede angeschlossene
+    /// Tastatur zum Laufen.
+    public var handlesHardwareKeys: Bool { !hasFocusEngine }
 
     /// Mindestkantenlänge einer Zelle in Punkten.
     public var minimumCellSide: Double {

@@ -31,6 +31,7 @@
 "cluelist.down" = "Down";
 "cluelist.all" = "Clues";
 "cluelist.complete" = "complete";
+"cluelist.progress" = "%lld letters, %lld filled";
 
 "grid.cell.position" = "Row %lld, column %lld";
 "grid.cell.empty" = "empty";

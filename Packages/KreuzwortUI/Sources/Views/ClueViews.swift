@@ -33,6 +33,15 @@ public struct ClueBarView: View {
                         .font(.headline)
                         .lineLimit(3)
                         .minimumScaleFactor(0.8)
+                    // Der Füllstand des aktiven Wortes. Beim Tippen ist das
+                    // die Auskunft, die man tatsächlich braucht: wo stehe ich,
+                    // wie viele Lücken bleiben.
+                    Text(session.pattern(of: entry))
+                        .font(.subheadline.monospaced())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Loc.string(
+                            "cluelist.progress", entry.slot.length,
+                            session.filledCount(of: entry)))
                 } else {
                     Text(loc: "clue.none").font(.headline)
                 }
@@ -55,6 +64,32 @@ public struct ClueBarView: View {
         }
         parts.append(Loc.string("clue.letters", entry.slot.length))
         return parts.joined(separator: " · ")
+    }
+}
+
+/// Der Füllstand eines Wortes: gesetzte Buchstaben, Lücken als „_“.
+///
+/// **Warum das sichtbar sein muss.** Welche Frage man als nächste angeht,
+/// entscheidet sich an den Kreuzern — ein Wort mit drei gesetzten Buchstaben
+/// ist oft lösbar, ein leeres selten. Die Fragenliste zeigte bisher nur ein
+/// Häkchen für fertige Wörter; der ganze Zwischenzustand, also gerade die
+/// Auskunft, nach der man auswählt, fehlte. Die Länge stand nur an der
+/// aktiven Frage, nicht an den anderen.
+extension PuzzleSession {
+    func letters(of entry: Entry) -> [Letter?] {
+        entry.slot.cells.map { progress.letter(at: puzzle.size.index($0)) }
+    }
+
+    /// „K _ E _ _ _“ — fürs Auge, mit schmalen Leerzeichen getrennt, damit die
+    /// Lücken zählbar bleiben.
+    func pattern(of entry: Entry) -> String {
+        letters(of: entry)
+            .map { $0.map { String(Alphabet.character($0)) } ?? "_" }
+            .joined(separator: "\u{2009}")
+    }
+
+    func filledCount(of entry: Entry) -> Int {
+        letters(of: entry).count { $0 != nil }
     }
 }
 
@@ -106,22 +141,32 @@ public struct ClueListContent: View {
 
     private func row(_ entry: Entry) -> some View {
         let isActive = session.activeEntry?.slot.id == entry.slot.id
+        let fertig = isComplete(entry)
+        let gesetzt = session.filledCount(of: entry)
         return Button { onSelect(entry.slot.id) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(marker(for: entry))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.secondary)
                     .frame(minWidth: 26, alignment: .trailing)
-                Text(entry.clueText)
-                    .font(.callout)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(entry.clueText)
+                        .font(.callout)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Länge und Füllstand in einer Zeile. Monospaced, damit die
+                    // Lücken untereinander stehen und zählbar bleiben.
+                    Text("\(entry.slot.length)\u{2009}·\u{2009}"
+                         + session.pattern(of: entry))
+                        .font(.caption.monospaced())
+                        .foregroundStyle(fertig ? AnyShapeStyle(.secondary)
+                                                : AnyShapeStyle(.primary.opacity(0.75)))
+                }
                 Spacer(minLength: 4)
-                if isComplete(entry) {
+                if fertig {
                     Image(systemName: "checkmark")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel(Loc.string("cluelist.complete"))
                 }
             }
             .padding(.horizontal, 12)
@@ -130,6 +175,13 @@ public struct ClueListContent: View {
             .background(isActive ? Color.accentColor.opacity(0.14) : .clear)
         }
         .buttonStyle(.plain)
+        // **Das Muster ist fürs Auge, nicht fürs Ohr.** „K Leerzeichen
+        // Unterstrich" vorgelesen hilft niemandem; die Zahl schon.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.clueText + ", "
+            + (fertig ? Loc.string("cluelist.complete")
+                      : Loc.string("cluelist.progress", entry.slot.length, gesetzt)))
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
     }
 
     private func marker(for entry: Entry) -> String {
