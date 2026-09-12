@@ -62,6 +62,7 @@
 "home.variant" = "Variante";
 "home.difficulty" = "Difficoltà";
 "home.start" = "Gioca";
+"home.generating" = "Creazione dello schema …";
 "home.resume" = "Continua";
 "home.language" = "Lingua";
 "home.languageSystem" = "Lingua di sistema";

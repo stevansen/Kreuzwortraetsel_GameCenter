@@ -62,6 +62,7 @@
 "home.variant" = "Variante";
 "home.difficulty" = "Schwierigkeit";
 "home.start" = "Losspielen";
+"home.generating" = "Rätsel wird erzeugt …";
 "home.resume" = "Weiterspielen";
 "home.language" = "Sprache";
 "home.languageSystem" = "Systemsprache";

@@ -85,6 +85,25 @@ final class RemoteNavigationTests: XCTestCase {
         XCTAssertTrue(focus(play, pressing: .down))
         XCUIRemote.shared.press(.select)
 
+        // **Die Oberfläche muss währenddessen ansprechbar bleiben.** Das
+        // Rätsel wird erst beim Druck erzeugt, und das dauert. Lief die
+        // Erzeugung auf dem Hauptthread, stand der Bildschirm still: gemessen
+        // 6,4 s ohne Fortschrittsanzeige und ohne Reaktion auf die
+        // Fernbedienung — auf einem Apple TV, der ein Vielfaches langsamer
+        // rechnet als der Mac unter diesem Simulator, wirkt das wie ein
+        // Absturz.
+        //
+        // Geprüft wird nicht die Dauer der Erzeugung — die hängt vom Seed ab,
+        // und jeder Lauf zieht einen anderen — sondern ob eine billige
+        // Abfrage rechtzeitig antwortet. Bei blockiertem Hauptthread tut sie
+        // das nicht.
+        let vorAbfrage = Date()
+        _ = app.staticTexts.firstMatch.exists
+        let dauer = Date().timeIntervalSince(vorAbfrage)
+        XCTAssertLessThan(dauer, 5,
+                          "Die Oberfläche antwortet während der Erzeugung "
+                          + "nicht (\(dauer) s) — der Hauptthread ist belegt")
+
         // Das Gitter braucht einen Moment: das Rätsel wird erzeugt.
         let letterA = app.buttons["A"]
         XCTAssertTrue(letterA.waitForExistence(timeout: 60),

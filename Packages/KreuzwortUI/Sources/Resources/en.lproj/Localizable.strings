@@ -61,6 +61,7 @@
 "home.variant" = "Variant";
 "home.difficulty" = "Difficulty";
 "home.start" = "Play";
+"home.generating" = "Building puzzle …";
 "home.resume" = "Continue";
 "home.language" = "Language";
 "home.languageSystem" = "System language";

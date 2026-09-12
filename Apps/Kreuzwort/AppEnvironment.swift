@@ -230,6 +230,58 @@ final class AppEnvironment {
         return try generator.generate(seed: seed, difficulty: difficulty).puzzle
     }
 
+    /// Dasselbe, aber **außerhalb des Hauptthreads**.
+    ///
+    /// **Warum das zählt.** Dieser Typ ist `@MainActor`; die Erzeugung lief
+    /// damit im Knopfdruck und legte die Oberfläche still. Gemessen im
+    /// tvOS-Simulator, Release-Build: **6,4 Sekunden** zwischen „Losspielen“
+    /// und dem spielbaren Gitter — ohne Fortschrittsanzeige und ohne jede
+    /// Reaktion auf die Fernbedienung. Ein Apple TV rechnet ein Vielfaches
+    /// langsamer als der Mac, der diesen Simulator trägt; dort wird daraus ein
+    /// Bildschirm, der minutenlang eingefroren wirkt.
+    ///
+    /// Alle Zutaten sind `Sendable`, die Erzeugung selbst ist reine Rechnung
+    /// ohne Zustand — sie gehört nicht auf den Hauptthread.
+    func puzzleOffMainThread(seed: UInt64) async throws -> Puzzle {
+        guard let index, let clues else { throw AppError.notReady }
+        let variant = self.variant
+        let difficulty = self.difficulty
+        let templates = self.templates
+        let widths = self.widths
+        return try await Task.detached(priority: .userInitiated) {
+            let layout: any LayoutProvider = variant == .classic
+                ? ClassicLayout(templates: templates) : ArrowLayout()
+            let generator = Generator(layout: layout, index: index,
+                                      clues: clues, widths: widths)
+            return try generator.generate(seed: seed, difficulty: difficulty).puzzle
+        }.value
+    }
+
+    func newPuzzleOffMainThread() async throws -> Puzzle {
+        let pick = UInt64(Date().timeIntervalSince1970 * 1000) & 0xFFFF_FFFF
+        let seed = verifiedSeeds?.seed(variant: variant, difficulty: difficulty,
+                                       pick: pick) ?? pick
+        return try await puzzleOffMainThread(seed: seed)
+    }
+
+    func dailyPuzzleOffMainThread() async throws -> Puzzle {
+        let date = ISO8601DateFormatter()
+        date.formatOptions = [.withFullDate]
+        let iso = date.string(from: Date())
+        let seed = verifiedSeeds?.dailySeed(isoDate: iso, variant: variant,
+                                            difficulty: difficulty)
+            ?? Puzzle.dailySeed(isoDate: iso, variant: variant, difficulty: difficulty)
+        return try await puzzleOffMainThread(seed: seed)
+    }
+
+    func restoreOffMainThread(_ progress: PuzzleProgress) async throws -> Puzzle {
+        let saved = (variant, difficulty)
+        variant = progress.variant
+        difficulty = progress.difficulty
+        defer { if progress.completedAtEpoch != nil { (variant, difficulty) = saved } }
+        return try await puzzleOffMainThread(seed: progress.seed)
+    }
+
     /// Ein angefangenes Rätsel wiederherstellen: aus dem Spielstand steht nur der
     /// Seed da, das Gitter wird neu erzeugt.
     func restore(_ progress: PuzzleProgress) throws -> Puzzle {

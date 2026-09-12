@@ -7,6 +7,9 @@ struct HomeView: View {
     let environment: AppEnvironment
     let capabilities: SurfaceCapabilities
     let onPlay: (Puzzle, PuzzleProgress?) -> Void
+    /// Läuft gerade eine Erzeugung? Sperrt Doppelstarts und zeigt, dass etwas
+    /// passiert.
+    @State private var isBusy = false
 
     /// Maße nach Betrachtungsabstand.
     ///
@@ -77,6 +80,25 @@ struct HomeView: View {
             .frame(maxWidth: columnWidth)
         }
         .frame(maxWidth: .infinity)
+        // **Sichtbar, dass etwas passiert.** Die Knöpfe bleiben bewusst
+        // bedienbar statt `disabled`: ein abgeschalteter Knopf verliert auf
+        // dem Fernseher den Fokus, und wo der Fokus landet, wenn das aktuelle
+        // Element verschwindet, ist genau der Fehler, der diese App schon
+        // einmal unbedienbar gemacht hat. Doppelstarts fängt `isBusy` ab.
+        .overlay(alignment: .bottom) {
+            if isBusy {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text(loc: "home.generating")
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 14)
+                .background(.thinMaterial, in: Capsule())
+                .padding(.bottom, outerPadding)
+                .transition(.opacity)
+            }
+        }
+        .animation(.default, value: isBusy)
     }
 
     /// Punkte und Serie kommen aus dem lokalen Profil, nicht aus Game Center —
@@ -170,14 +192,37 @@ struct HomeView: View {
         }
     }
 
+    /// Startet ein Rätsel, **ohne den Hauptthread zu blockieren**.
+    ///
+    /// Vorher stand hier ein synchroner Aufruf. Gemessen im tvOS-Simulator
+    /// (Release) lagen zwischen dem Druck auf „Losspielen“ und dem spielbaren
+    /// Gitter 6,4 Sekunden, in denen die Oberfläche stand: kein Fortschritt,
+    /// keine Reaktion auf die Fernbedienung. Auf einem Apple TV, der ein
+    /// Vielfaches langsamer rechnet als der Mac unter diesem Simulator, wirkt
+    /// das wie eine abgestürzte App.
     private func start(daily: Bool) {
-        guard let puzzle = try? (daily ? environment.dailyPuzzle() : environment.newPuzzle())
-        else { return }
-        onPlay(puzzle, environment.store?.load(puzzleID: puzzle.id))
+        guard !isBusy else { return }
+        isBusy = true
+        Task {
+            let puzzle = try? await (daily ? environment.dailyPuzzleOffMainThread()
+                                           : environment.newPuzzleOffMainThread())
+            isBusy = false
+            guard let puzzle else { return }
+            onPlay(puzzle, environment.store?.load(puzzleID: puzzle.id))
+        }
     }
 
     private func resume(_ progress: PuzzleProgress) {
-        guard let puzzle = try? environment.restore(progress) else { return }
-        onPlay(puzzle, progress)
+        guard !isBusy else { return }
+        isBusy = true
+        Task {
+            // Ein Spielstand trägt nur den Seed; das Gitter entsteht neu — also
+            // dieselbe Rechnung und dieselbe Wartezeit wie bei einem neuen
+            // Rätsel.
+            let puzzle = try? await environment.restoreOffMainThread(progress)
+            isBusy = false
+            guard let puzzle else { return }
+            onPlay(puzzle, progress)
+        }
     }
 }
