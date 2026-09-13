@@ -30,3 +30,23 @@ enum PlatformSurface {
         #endif
     }
 }
+
+/// Wie „zurück" auf dieser Plattform gemeldet wird.
+///
+/// **Nur der Fernseher hat eine Back-Taste.** Dort fängt `onExitCommand` sie
+/// ab — den Modifier gibt es auf iOS nicht, deshalb steht die Verzweigung hier
+/// und nicht in `KreuzwortUI`: das Paket soll frei von Plattformverhalten
+/// bleiben, und ein Seam-Test prüft das.
+///
+/// Angebracht wird er nur an der Buchstabenauswahl. Läge er über dem ganzen
+/// Rätsel, schluckte er die Taste auch im Gitter — und damit den Weg aus der
+/// App heraus.
+extension PlatformSurface {
+    @MainActor static var backCommand: BackCommand {
+        #if os(tvOS)
+        return { view, action in AnyView(view.onExitCommand(perform: action)) }
+        #else
+        return noBackCommand
+        #endif
+    }
+}

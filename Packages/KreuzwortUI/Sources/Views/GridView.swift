@@ -11,18 +11,28 @@ import PuzzleKit
 public struct GridView: View {
     let session: PuzzleSession
     let capabilities: SurfaceCapabilities
-    /// Welche Zelle den Fokus hat. Nur auf Flächen mit Fokus-Engine belegt: dort
-    /// bewegt die Fernbedienung den Fokus, und der Cursor folgt ihm. Auf allen
-    /// anderen Flächen setzt ein Tippen oder die Tastatur den Cursor, und dieser
-    /// Zustand bleibt leer.
-    @FocusState private var focusedCell: Cell?
+    /// Wohin der Fokus zeigt — **geteilt mit der Buchstabenleiste**.
+    ///
+    /// Nur auf Flächen mit Fokus-Engine belegt: dort bewegt die Fernbedienung
+    /// den Fokus, und der Cursor folgt ihm. Auf allen anderen Flächen setzt ein
+    /// Tippen oder die Tastatur den Cursor, und dieser Zustand bleibt leer.
+    @FocusState.Binding var focus: PuzzleFocus?
+    /// Der Fokus ist auf eine Zelle gewandert — der Cursor zieht nach.
     let onTap: (Cell) -> Void
+    /// Die Zelle wurde **ausgewählt** (Tipp oder „Auswählen“ auf der
+    /// Fernbedienung). Das ist etwas anderes als sie nur anzusteuern: erst hier
+    /// geht es weiter zur Eingabe.
+    let onSelect: (Cell) -> Void
 
     public init(session: PuzzleSession, capabilities: SurfaceCapabilities,
-                onTap: @escaping (Cell) -> Void) {
+                focus: FocusState<PuzzleFocus?>.Binding,
+                onTap: @escaping (Cell) -> Void,
+                onSelect: @escaping (Cell) -> Void) {
         self.session = session
         self.capabilities = capabilities
+        self._focus = focus
         self.onTap = onTap
+        self.onSelect = onSelect
     }
 
     private var size: GridSize { session.puzzle.size }
@@ -65,8 +75,8 @@ public struct GridView: View {
         // „Auswählen", und die Fokus-Engine des Systems findet die Nachbarzelle
         // besser als jede eigene Rechnung. Auf Flächen ohne Fokus-Engine bleibt
         // `focusedCell` leer und dieser Zweig läuft nie.
-        .onChange(of: focusedCell) { _, new in
-            if let new { onTap(new) }
+        .onChange(of: focus) { _, new in
+            if case .cell(let cell) = new { onTap(cell) }
         }
         // Umgekehrt: springt der Cursor anders (Wortwechsel, Hinweis), zieht
         // der Fokus nach. Sonst zeigt der Fernseher den Fokus an einer Stelle
@@ -81,9 +91,9 @@ public struct GridView: View {
         // fokussiert. Bei einem Wort mit acht Buchstaben ist das keine
         // Bedienung mehr.
         .onChange(of: session.caret.cell) { _, new in
-            guard capabilities.hasFocusEngine, focusedCell != nil,
-                  focusedCell != new else { return }
-            focusedCell = new
+            guard capabilities.hasFocusEngine,
+                  case .cell(let aktuell)? = focus, aktuell != new else { return }
+            focus = .cell(new)
         }
     }
 
@@ -123,19 +133,35 @@ public struct GridView: View {
                 .contentShape(Rectangle())
 
         case .letter:
-            LetterCellView(state: session.progress.cells[index],
-                           number: number(at: cell),
-                           isCaret: session.caret.cell == cell,
-                           isActiveWord: activeCells.contains(cell),
-                           isFlagged: session.flaggedCells.contains(index),
-                           side: side)
-                .frame(width: side, height: side)
-                .contentShape(Rectangle())
-                .onTapGesture { onTap(cell) }
-                .focusable(capabilities.hasFocusEngine)
-                .focused($focusedCell, equals: cell)
-                .accessibilityLabel(accessibilityLabel(for: cell))
-                .accessibilityAddTraits(session.caret.cell == cell ? [.isSelected] : [])
+            // **Ein Knopf, keine bloß fokussierbare Ansicht.** Auf dem
+            // Fernseher löst „Auswählen" auf einer Ansicht mit `focusable`
+            // und `onTapGesture` nichts aus — gemessen: der Fokus stand im
+            // Gitter, der Druck kam nicht an, und der Wechsel zur
+            // Buchstabenauswahl blieb aus. Ein `Button` ist der Weg, den die
+            // Fokus-Engine kennt; `.plain` hält ihn optisch aus dem Gitter
+            // heraus.
+            Button { onSelect(cell) } label: {
+                LetterCellView(state: session.progress.cells[index],
+                               number: number(at: cell),
+                               isCaret: session.caret.cell == cell,
+                               isActiveWord: activeCells.contains(cell),
+                               isFlagged: session.flaggedCells.contains(index),
+                               side: side)
+                    .frame(width: side, height: side)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            // **Kein `focusable` über dem Knopf.** Genau das hat den Druck
+            // verschluckt: gemessen war die Beschriftung der Zelle vor und
+            // nach „Auswählen" identisch, obwohl die Auswahl testweise die
+            // Frage wechselte — der Fokus lag auf der Hülle, der Knopf
+            // darunter bekam nie etwas. Dieselbe Falle wie beim `focusable`
+            // über dem ganzen Rätselbildschirm, die die App unbedienbar
+            // machte. Ein Knopf ist von sich aus fokussierbar, wo es eine
+            // Fokus-Engine gibt, und sonst nicht.
+            .focused($focus, equals: .cell(cell))
+            .accessibilityLabel(accessibilityLabel(for: cell))
+            .accessibilityAddTraits(session.caret.cell == cell ? [.isSelected] : [])
         }
     }
 

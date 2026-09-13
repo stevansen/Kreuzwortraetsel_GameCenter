@@ -35,13 +35,18 @@ public struct LetterRailView: View {
     }
 
     let layout: Layout
+    /// Wohin der Fokus zeigt — geteilt mit dem Gitter, damit eine ausgewählte
+    /// Zelle hierher springen kann und die Back-Taste zurück.
+    @FocusState.Binding var focus: PuzzleFocus?
     let onLetter: (Character) -> Void
     let onDelete: () -> Void
 
     public init(layout: Layout = .wide,
+                focus: FocusState<PuzzleFocus?>.Binding,
                 onLetter: @escaping (Character) -> Void,
                 onDelete: @escaping () -> Void) {
         self.layout = layout
+        self._focus = focus
         self.onLetter = onLetter
         self.onDelete = onDelete
     }
@@ -79,12 +84,14 @@ public struct LetterRailView: View {
                                     .frame(maxWidth: .infinity, minHeight: 40)
                             }
                             .accessibilityLabel(String(letter))
+                            .focused($focus, equals: .letter(letter))
                         } else if isDeleteSlot(row: rowIndex, index: index) {
                             Button(action: onDelete) {
                                 Image(systemName: "delete.left")
                                     .frame(maxWidth: .infinity, minHeight: 40)
                             }
                             .accessibilityLabel(Loc.string("action.delete"))
+                            .focused($focus, equals: .delete)
                         } else {
                             // Leerplatz: hält die Spaltenbreite, ohne fokussierbar
                             // zu sein — sonst liefe die Fernbedienung ins Nichts.

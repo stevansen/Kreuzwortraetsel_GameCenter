@@ -30,9 +30,15 @@ final class TouchInputTests: XCTestCase {
     /// oder als `staticText` im Baum steht, wechselt zwischen Läufen.
     private func emptyCells() -> Int {
         let needle = ", leer"
+        // **Drei Typen.** Wo eine Zelle im Baum landet, wechselt: als
+        // `otherElement`, als `staticText` — und seit sie ein `Button` ist,
+        // auch dort. Ein Anlauf, der nur einen Typ fragte, meldete
+        // verlässlich null und ließ eine funktionierende App durchfallen.
         return app.otherElements.matching(NSPredicate(
                    format: "label CONTAINS %@", needle)).count
              + app.staticTexts.matching(NSPredicate(
+                   format: "label CONTAINS %@", needle)).count
+             + app.buttons.matching(NSPredicate(
                    format: "label CONTAINS %@", needle)).count
     }
 

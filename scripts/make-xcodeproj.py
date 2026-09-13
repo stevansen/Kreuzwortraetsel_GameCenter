@@ -407,7 +407,7 @@ def main() -> None:
         # Build 1 liegt für iOS oben; die weiteren Plattformen brauchen eine
         # höhere Nummer („The bundle version must be higher than the previously
         # uploaded version: '1'").
-        'CURRENT_PROJECT_VERSION = 7',
+        'CURRENT_PROJECT_VERSION = 8',
         "ENABLE_PREVIEWS = YES",
         "GENERATE_INFOPLIST_FILE = YES",
         # Eine eigene Info.plist als Basis: CFBundleURLTypes und

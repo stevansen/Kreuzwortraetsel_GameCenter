@@ -18,12 +18,25 @@ public struct PuzzleScreen: View {
     /// Ein Callback statt einer Abhängigkeit auf GameServices: die Ansicht muss
     /// nicht wissen, dass es Game Center gibt — sie meldet, dass etwas fertig ist.
     private let onSolved: (ScoreBreakdown) -> Void
+    /// Wie „zurück" angebunden wird — liefert das App-Target, siehe
+    /// `BackCommand`.
+    private let backCommand: BackCommand
+
+    /// Wohin der Fokus zeigt. Gitter und Buchstabenleiste teilen sich diesen
+    /// Zustand, damit eine ausgewählte Zelle zur Eingabe springen kann.
+    @FocusState private var focus: PuzzleFocus?
+    /// Der zuletzt benutzte Buchstabe. Wer zurück ins Gitter geht und die
+    /// nächste Zelle wählt, landet wieder dort, wo er aufgehört hat — nicht
+    /// jedes Mal bei „A".
+    @State private var lastLetter: Character = "A"
 
     public init(session: PuzzleSession, capabilities: SurfaceCapabilities,
+                backCommand: @escaping BackCommand = noBackCommand,
                 onSolved: @escaping (ScoreBreakdown) -> Void = { _ in },
                 onNextPuzzle: @escaping () -> Void = {}) {
         self._session = State(initialValue: session)
         self.capabilities = capabilities
+        self.backCommand = backCommand
         self.onSolved = onSolved
         self.onNextPuzzle = onNextPuzzle
     }
@@ -92,9 +105,9 @@ public struct PuzzleScreen: View {
     private var spalte: some View {
         VStack(spacing: 12) {
             header
-            GridView(session: session, capabilities: capabilities) { cell in
-                session.apply(.jump(cell))
-            }
+            GridView(session: session, capabilities: capabilities, focus: $focus,
+                     onTap: { session.apply(.jump($0)) },
+                     onSelect: select)
             .frame(maxHeight: .infinity)
             ClueBarView(session: session,
                         onPrevious: { session.apply(.previousSlot) },
@@ -108,12 +121,35 @@ public struct PuzzleScreen: View {
         }
     }
 
+    /// **Eine Zelle wählen heißt: zur Eingabe gehen.**
+    ///
+    /// Auf einer Fläche mit Fokus-Engine war das vorher zwei getrennte
+    /// Wanderungen — erst die Zelle ansteuern, dann quer über den Bildschirm zu
+    /// den Buchstaben. Jetzt ist es dieselbe Geste wie auf dem Telefon: Feld
+    /// wählen, tippen, mit „zurück" wieder aufs Feld. Wo es keine Fokus-Engine
+    /// gibt, setzt die Auswahl nur den Cursor — dort ist die Leiste ohnehin
+    /// immer mit einem Tipp erreichbar.
+    private func select(_ cell: Cell) {
+        session.apply(.jump(cell))
+        guard capabilities.hasFocusEngine, capabilities.needsOnScreenLetters
+        else { return }
+        // **Einen Durchlauf später.** Direkt in der Knopfbehandlung gesetzt
+        // verpufft die Zuweisung: die Fokus-Engine arbeitet den Druck danach
+        // selbst ab und setzt den Fokus zurück auf die Zelle. Gemessen stand
+        // nach dem Auswählen unverändert die Zelle im Fokus. Dieselbe Falle
+        // wie bei einer Zuweisung in `onAppear`.
+        Task { @MainActor in focus = .letter(lastLetter) }
+    }
+
     /// Dieselbe Umwandlung wie bei der Tastatur, damit es nur einen Weg von
     /// einem Zeichen zu einem Eintrag gibt.
     private func letterRail(_ layout: LetterRailView.Layout) -> some View {
-        LetterRailView(layout: layout,
-                       onLetter: { _ = handleCharacter(String($0)) },
-                       onDelete: { session.apply(.deleteBackward) })
+        backCommand(
+            AnyView(LetterRailView(
+                layout: layout, focus: $focus,
+                onLetter: { lastLetter = $0; _ = handleCharacter(String($0)) },
+                onDelete: { session.apply(.deleteBackward) })),
+            { focus = .cell(session.caret.cell) })
     }
 
     private var header: some View {

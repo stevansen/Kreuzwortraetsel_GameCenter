@@ -63,9 +63,15 @@ final class RemoteNavigationTests: XCTestCase {
     /// jedem eingetragenen Buchstaben sinken, in jedem Rätsel.
     private func emptyCells() -> Int {
         let needle = ", leer"
+        // **Drei Typen.** Wo eine Zelle im Baum landet, wechselt: als
+        // `otherElement`, als `staticText` — und seit sie ein `Button` ist,
+        // auch dort. Ein Anlauf, der nur einen Typ fragte, meldete
+        // verlässlich null und ließ eine funktionierende App durchfallen.
         return app.otherElements.matching(NSPredicate(
                    format: "label CONTAINS %@", needle)).count
              + app.staticTexts.matching(NSPredicate(
+                   format: "label CONTAINS %@", needle)).count
+             + app.buttons.matching(NSPredicate(
                    format: "label CONTAINS %@", needle)).count
     }
 
@@ -156,6 +162,77 @@ final class RemoteNavigationTests: XCTestCase {
         usleep(800_000)
         XCTAssertLessThan(emptyCells(), nachA,
                           "Der zweite Buchstabe kam nicht an")
+    }
+
+    /// **Der neue Weg: Feld wählen führt zur Eingabe, „zurück“ aufs Feld.**
+    ///
+    /// Vorher waren das zwei getrennte Wanderungen quer über den Bildschirm —
+    /// erst die Zelle ansteuern, dann zu den Buchstaben laufen, für den
+    /// nächsten Buchstaben wieder zurück. Jetzt ist es dieselbe Geste wie auf
+    /// dem Telefon.
+    func testSelectingACellOpensTheLetters() throws {
+        let play = app.buttons["Losspielen"]
+        XCTAssertTrue(play.waitForExistence(timeout: 20))
+        XCTAssertTrue(focus(play, pressing: .down))
+        XCUIRemote.shared.press(.select)
+        XCTAssertTrue(app.buttons["A"].waitForExistence(timeout: 60))
+
+        // Ins Gitter. Gitterzellen sind keine Knöpfe — steht kein Knopf im
+        // Fokus, ist der Fokus dort.
+        //
+        // Die Richtung wird gewechselt, weil der Startpunkt nicht feststeht:
+        // ein erster Anlauf drückte zehnmal „hoch" und blieb dabei in der
+        // Buchstabenspalte, die selbst zehn Reihen hat.
+        var imGitter = false
+        let weg: [XCUIRemote.Button] = [.right, .up, .right, .up, .up, .right,
+                                        .up, .up, .right, .up, .up, .right]
+        for taste in weg {
+            if imGitterFokussiert() { imGitter = true; break }
+            XCUIRemote.shared.press(taste)
+            usleep(500_000)
+        }
+        if !imGitter { imGitter = imGitterFokussiert() }
+        XCTAssertTrue(imGitter, "Das Gitter ließ sich nicht ansteuern — "
+                      + "im Fokus steht \(fokussierteKnöpfe())")
+
+        print("VOR AUSWAHL: \(fokussierteKnöpfe())")
+        // Auswählen muss zur Buchstabenauswahl führen.
+        XCUIRemote.shared.press(.select)
+        usleep(700_000)
+        let nachAuswahl = fokussierteKnöpfe()
+        XCTAssertTrue(nachAuswahl.contains { $0.count == 1 },
+                      "Nach dem Auswählen einer Zelle steht kein Buchstabe im "
+                      + "Fokus, sondern \(nachAuswahl)")
+
+        // Eintragen — der Buchstabe muss ankommen.
+        let vorher = emptyCells()
+        XCUIRemote.shared.press(.select)
+        usleep(800_000)
+        XCTAssertLessThan(emptyCells(), vorher, "Der Buchstabe kam nicht an")
+
+        // Zurück aufs Spielfeld.
+        XCUIRemote.shared.press(.menu)
+        usleep(800_000)
+        XCTAssertTrue(imGitterFokussiert(),
+                      "„Zurück“ führt nicht ins Gitter — im Fokus steht noch "
+                      + "\(fokussierteKnöpfe())")
+    }
+
+    /// Welche Knöpfe haben gerade den Fokus?
+    ///
+    /// Nur über `buttons`: eine Abfrage über alle Nachfahren läuft an einem
+    /// 169-Zellen-Gitter in die Zeitüberschreitung.
+    /// Steht der Fokus auf einer Gitterzelle?
+    ///
+    /// Erkennbar an der Beschriftung „Zeile r, Spalte c, …". Seit die Zellen
+    /// Knöpfe sind, ist das eine genauere Auskunft als die frühere Hilfsregel
+    /// „kein Knopf im Fokus, also im Gitter".
+    private func imGitterFokussiert() -> Bool {
+        fokussierteKnöpfe().contains { $0.hasPrefix("Zeile ") }
+    }
+
+    private func fokussierteKnöpfe() -> [String] {
+        app.buttons.allElementsBoundByIndex.filter { $0.hasFocus }.map { $0.label }
     }
 }
 #endif

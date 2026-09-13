@@ -76,6 +76,7 @@ struct RootView: View {
         case .ready:
             if let session {
                 PuzzleScreen(session: session, capabilities: capabilities,
+                             backCommand: PlatformSurface.backCommand,
                              onSolved: { breakdown in
                     Task {
                         await environment.recordCompletion(
